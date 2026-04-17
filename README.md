@@ -178,30 +178,29 @@ graph TD
 Getting started with Horus takes less than 60 seconds. 
 **⚡ Test Instantly:** Download our [Postman Collection](./horus_postman_collection.json) to ping the API directly from your browser.
 
+### **1. Fire up the Core Engine**
 ```bash
-# 1. Install Dependencies
-pip install -r requirements.txt
+# Install Dependencies
+pip install mcp httpx
 
-# 2. Fire up the Core Engine
-uvicorn app.main:app --host 0.0.0.0 --port 8011
-```
+# Set your RapidAPI Key (Required for the server to fetch live data)
+export RAPIDAPI_KEY="your_actual_rapidapi_key"
 
-In your local Bot / Agent, simply pull the live flow for any Crypto or US Equity:
+# Run the SSE Server
+python horus_mcp_public.py --transport sse --port 8011
 
-```python
 import requests
 
-response = requests.get(
-    "http://127.0.0.1:8011/v1/flow/crypto/BTCUSDT", 
-    headers={"X-API-Key": "your_secure_api_key"}
-)
+# Connecting to your local Horus instance
+response = requests.get("[http://127.0.0.1:8011/v1/flow/crypto/BTCUSDT](http://127.0.0.1:8011/v1/flow/crypto/BTCUSDT)")
 
 flow_data = response.json()
 
 # The Zero-Human Decision Loop:
-if flow_data['signal'] in ['EMERGENCY_DUMP', 'BAILOUT', 'LIQUIDITY_EVENT']:
-    print("Market gravity collapsing. Market selling all positions.")
+if flow_data.get('signal') in ['EMERGENCY_DUMP', 'BAILOUT', 'LIQUIDITY_EVENT']:
+    print(f"⚠️ {flow_data['symbol']} Market gravity collapsing. Executing Bailout.")
     # execute_market_sell()
+
 ```
 
 ---

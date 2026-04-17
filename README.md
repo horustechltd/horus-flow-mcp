@@ -4,6 +4,13 @@
   <p><strong>A True Market Gravity Engine for Autonomous AI Agents and HFT Traders.</strong></p>
 
   <p>
+    [![horus-flow-mcp MCP server](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/card.svg)](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp)
+  </p>
+  <p>
+    [![horus-flow-mcp MCP server](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/score.svg)](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp)
+  </p>
+
+  <p>
     <img src="https://img.shields.io/badge/Latency-29ms-brightgreen?style=for-the-badge&logo=speedtest" alt="Latency">
     <img src="https://img.shields.io/badge/Accuracy-75%25_Real_Time-blue?style=for-the-badge&logo=analytics" alt="Accuracy">
     <img src="https://img.shields.io/badge/Python-3.12-yellow?style=for-the-badge&logo=python" alt="Python">

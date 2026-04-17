@@ -1,33 +1,6 @@
 {
-  "$schema": "https://glama.ai/mcp/schemas/server.json",
-  "name": "horus-flow-mcp",
-  "display_name": "Horus Flow Intelligence",
-  "description": "Institutional-grade crypto and US equity orderflow engine. Provides real-time microstructure physics, spoofing detection, and Live 1M Candle predictions as contextual output for trading AI agents.",
-  "repository": "https://github.com/horustechltd/horus-flow-mcp",
-  "homepage": "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",
-  "license": "MIT",
-  "runtime": "python",
-  "mcpServers": {
-    "horus-flow": {
-      "command": "python3",
-      "args": ["horus_mcp_public.py", "--transport", "stdio"],
-      "env": {
-        "RAPIDAPI_KEY": ""
-      }
-    }
-  },
-  "tools": [
-    {
-      "name": "get_crypto_flow",
-      "description": "Get real-time institutional orderflow signal for a cryptocurrency pair (e.g., BTCUSDT)"
-    },
-    {
-      "name": "get_equity_flow",
-      "description": "Get real-time institutional orderflow signal for a US equity stock (e.g., NVDA)"
-    },
-    {
-      "name": "scan_crypto_flow",
-      "description": "Scan multiple cryptocurrencies for orderflow signals simultaneously"
-    }
+  "glamaVersion": "1.0.0",
+  "maintainers": [
+    "horustechltd"
   ]
 }

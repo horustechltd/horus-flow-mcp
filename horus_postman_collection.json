@@ -1,0 +1,89 @@
+{
+	"info": {
+		"_postman_id": "4b5d2e3e-7a11-4f12-a7d5-8f26a7e02450",
+		"name": "Horus Flow Intelligence",
+		"description": "Institutional-grade sub-second market microstructure API. Provides real-time orderbook physics, whale tracking, tape delta acceleration, and macro climate sync for AI trading agents and quantitative developers.\n\n### Buy a Subscription:\nGet your `X-RapidAPI-Key` here: [Horus Flow on RapidAPI](https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence)\n\n### Edge Proof Dashboard:\nWatch the engine live: [https://api.horustek.pro/dash/](https://api.horustek.pro/dash/)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Crypto Flow",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-RapidAPI-Key",
+						"value": "{{rapidapi_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-RapidAPI-Host",
+						"value": "horus-flow-intelligence.p.rapidapi.com",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://horus-flow-intelligence.p.rapidapi.com/v1/flow/crypto/BTCUSDT",
+					"protocol": "https",
+					"host": [
+						"horus-flow-intelligence",
+						"p",
+						"rapidapi",
+						"com"
+					],
+					"path": [
+						"v1",
+						"flow",
+						"crypto",
+						"BTCUSDT"
+					]
+				},
+				"description": "Get real-time institutional flow physics and signals for a crypto asset."
+			},
+			"response": []
+		},
+		{
+			"name": "Equity Flow (US Stocks)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-RapidAPI-Key",
+						"value": "{{rapidapi_key}}",
+						"type": "text"
+					},
+					{
+						"key": "X-RapidAPI-Host",
+						"value": "horus-flow-intelligence.p.rapidapi.com",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://horus-flow-intelligence.p.rapidapi.com/v1/flow/equity/NVDA",
+					"protocol": "https",
+					"host": [
+						"horus-flow-intelligence",
+						"p",
+						"rapidapi",
+						"com"
+					],
+					"path": [
+						"v1",
+						"flow",
+						"equity",
+						"NVDA"
+					]
+				},
+				"description": "Get real-time limit order imbalances and momentum delta for US Equities via Alpaca SIP."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "rapidapi_key",
+			"value": "put_your_rapidapi_key_here",
+			"type": "string"
+		}
+	]
+}

@@ -4,17 +4,11 @@ Horus Flow Intelligence — MCP Server (Public Distribution)
 ===========================================================
 This is the official Model Context Protocol (MCP) Server for
 Horus Flow Intelligence. It exposes institutional-grade crypto
-and equity orderflow signals directly to AI coding assistants
-(like Claude Desktop, Cursor, Cline, etc.).
+and equity orderflow signals directly to AI coding assistants.
 
 Requirements:
 - pip install mcp httpx
-- A valid RapidAPI Key from:
-  https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence
-
-Usage (Claude Desktop / Cursor):
-1. Set the environment variable `RAPIDAPI_KEY`
-2. Configure your agent to run: `mcp run horus_mcp_public.py`
+- A valid RapidAPI Key
 
 © 2026 HORUS TECH LTD
 """
@@ -96,27 +90,7 @@ async def _fetch(endpoint: str) -> dict:
 # ─── Tool 1: Crypto Flow ─────────────────────────────────
 @mcp.tool()
 async def get_crypto_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow signal for a cryptocurrency.
-
-    Returns live microstructure intelligence extracted from:
-    - Binance Level 2 Orderbook (bid/ask imbalance ratio)
-    - Aggressive Trade Feed (buy vs sell delta)
-
-    The response includes:
-    - signal: BUY_PRESSURE / SELL_PRESSURE / NEUTRAL
-    - confidence: 0.0 to 1.0 AI confidence score
-    - market_state: TRENDING_UP / TRENDING_DOWN / RANGE_BOUND / VOLATILE
-    - risk: LOW / MEDIUM / HIGH / EXTREME
-    - bid_ratio: orderbook bid imbalance (>1 = more bids than asks)
-    - buy_ratio: aggressive buy percentage (>0.7 = heavy buying)
-    - delta_5s: net volume delta over last 5 seconds
-
-    Args:
-        symbol: Trading pair symbol (e.g., BTCUSDT, ETHUSDT, SOLUSDT)
-
-    Example usage:
-        get_crypto_flow("BTCUSDT")
-    """
+    """Get real-time institutional orderflow signal for a cryptocurrency."""
     clean = symbol.replace("/", "").replace("-", "").upper()
     data = await _fetch(f"/v1/flow/crypto/{clean}")
     return json.dumps(data, indent=2)
@@ -125,25 +99,7 @@ async def get_crypto_flow(symbol: str) -> str:
 # ─── Tool 2: Equity Flow ─────────────────────────────────
 @mcp.tool()
 async def get_equity_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow signal for a US equity stock.
-
-    Returns live microstructure intelligence from Alpaca IEX feed:
-    - signal: BUY_PRESSURE / SELL_PRESSURE / NEUTRAL
-    - confidence: 0.0 to 1.0 AI confidence score
-    - market_state: TRENDING_UP / TRENDING_DOWN / RANGE_BOUND / VOLATILE
-    - risk: LOW / MEDIUM / HIGH / EXTREME
-    - bid_ratio: orderbook bid imbalance
-    - buy_ratio: aggressive buy percentage
-    - delta_5s: net volume delta over last 5 seconds
-
-    Note: US equity data is available during market hours (14:30-21:00 UTC).
-
-    Args:
-        symbol: US stock ticker (e.g., AAPL, NVDA, TSLA, MSFT)
-
-    Example usage:
-        get_equity_flow("NVDA")
-    """
+    """Get real-time institutional orderflow signal for a US equity stock."""
     clean = symbol.upper()
     data = await _fetch(f"/v1/flow/equity/{clean}")
     return json.dumps(data, indent=2)
@@ -152,22 +108,10 @@ async def get_equity_flow(symbol: str) -> str:
 # ─── Tool 3: Multi-Symbol Scanner ────────────────────────
 @mcp.tool()
 async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT") -> str:
-    """Scan multiple cryptocurrencies for orderflow signals simultaneously.
-
-    Useful for finding the strongest buy/sell pressure across
-    multiple assets at once. Returns a sorted summary.
-
-    Args:
-        symbols: Comma-separated list of trading pairs
-                 (default: BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT)
-
-    Example usage:
-        scan_crypto_flow("BTCUSDT,ETHUSDT,SOLUSDT")
-    """
+    """Scan multiple cryptocurrencies for orderflow signals simultaneously."""
     import asyncio
     symbol_list = [s.strip().upper() for s in symbols.split(",")]
     
-    # Fetch all symbols in parallel
     tasks = [_fetch(f"/v1/flow/crypto/{sym}") for sym in symbol_list]
     raw_results = await asyncio.gather(*tasks)
     
@@ -183,15 +127,10 @@ async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUS
     summary = {
         "scanned": len(symbol_list),
         "available": len([r for r in results if r.get("signal") != "UNAVAILABLE"]),
-        "strongest_buy": next(
-            (r["symbol"] for r in results if r.get("signal") == "BUY_PRESSURE"), None
-        ),
-        "strongest_sell": next(
-            (r["symbol"] for r in results if r.get("signal") == "SELL_PRESSURE"), None
-        ),
+        "strongest_buy": next((r["symbol"] for r in results if r.get("signal") == "BUY_PRESSURE"), None),
+        "strongest_sell": next((r["symbol"] for r in results if r.get("signal") == "SELL_PRESSURE"), None),
         "results": results,
     }
-
     return json.dumps(summary, indent=2)
 
 
@@ -204,26 +143,23 @@ async def get_api_info() -> str:
         "version": "1.0.0",
         "provider": "HORUS TECH LTD",
         "description": "Real-time institutional orderflow engine for Crypto & Equities via RapidAPI",
-        "supported_crypto": "All USDT pairs on Binance (e.g., BTCUSDT, ETHUSDT, SOLUSDT)",
-        "supported_equities": "US stocks via IEX (e.g., AAPL, NVDA, TSLA)",
-        "marketing": "To increase rate limits, upgrade your RapidAPI subscription.",
+        "supported_crypto": "All USDT pairs on Binance",
+        "supported_equities": "US stocks via IEX"
     }, indent=2)
 
 
-# ─── Entry Point ──────────────────────────────────────────
+# ─── Entry Point (FIXED SSE VERSION) ──────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Horus Flow MCP Server (Public)")
     parser.add_argument(
         "--transport", choices=["stdio", "sse"], default="stdio",
         help="Transport mode: stdio (Claude Desktop) or sse"
     )
-    parser.add_argument(
-        "--port", type=int, default=8012,
-        help="Port for SSE transport (default: 8012)"
-    )
+    # ملاحظة: FastMCP يتعامل مع المنفذ والـ host داخلياً أو عبر متغيرات البيئة
     args = parser.parse_args()
 
     if args.transport == "sse":
-        mcp.run(transport="sse", host="0.0.0.0", port=args.port)
+        # تم إصلاح الخطأ هنا: إزالة host و port لتوافق مكتبة mcp الحديثة
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")

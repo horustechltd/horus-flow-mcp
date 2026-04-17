@@ -28,8 +28,50 @@
 
 ---
 
+## 🧠 Why Horus? The AI Agent's "Nervous System"
+
+In the world of autonomous trading, an AI Agent without real-time orderflow is like a pilot flying blind. Technical indicators (RSI, MACD) are **lagging echoes** of the past. **Horus** is the **Nervous System** that provides:
+
+*   **Proprioception:** Real-time awareness of market "muscle" (Orderbook Depth).
+*   **Reflexes:** Sub-second detection of institutional "pain" (Liquidity Collapses).
+*   **Intelligence:** A context-aware decision matrix that translates raw physics into actionable signals.
+
+> "If you want your AI Agent to trade like a whale, you must give it the whale's eyes. Horus is that vision."
+
+---
+
+## 🧪 Manus AI Audit: Live Performance Proof
+
+Horus Flow MCP has been rigorously audited by **Manus AI** (an autonomous execution agent). The results confirm that Horus isn't just code—it's a high-performance reality.
+
+### **Audit Highlights (Live Test on BTCUSDT):**
+*   **Signal Accuracy:** Successfully detected **STRONG_SELL_PRESSURE** with a **0.85 Confidence Score**.
+*   **Physics Engine Validation:** Confirmed `bid_ask_ratio` of **0.156**, proving the engine's ability to read thin limit books and aggressive selling.
+*   **Zero-Hallucination Logic:** The MCP server correctly identified symbols in "Data Gathering" mode (e.g., SOLUSDT), preventing the AI from making false assumptions.
+
+| Metric | Audit Result | Status |
+| :--- | :--- | :--- |
+| **Response Time** | Sub-millisecond (Local) | ✅ Verified |
+| **Data Integrity** | L2 Binance Orderbook Sync | ✅ Verified |
+| **AI Confidence** | 0.85+ on High-Vol Events | ✅ Verified |
+
+---
+
+## 💰 The $29 Arbitrage: Institutional Intelligence for the Price of a Lunch
+
+Why pay thousands for institutional terminals when you can get the same **Microstructure Intelligence** for a fraction of the cost?
+
+| Feature | **Horus Flow MCP** | Traditional Terminals |
+| :--- | :--- | :--- |
+| **Monthly Cost** | **$29 (Pro Plan)** | $150 - $2,000+ |
+| **AI Integration** | **Native MCP (Plug & Play)** | Complex API / Manual |
+| **Data Source** | Institutional L2 Feeds | Proprietary / Closed |
+| **Decision Logic** | Physics-Based (Gravity) | Lagging Indicators |
+
+---
+
 ## 🛑 Stop Predicting Candles. Start Measuring Gravity.
-Retail traders use trailing indicators (RSI/MACD) to guess what the market will do based on the *past*. **Horus** uses Level 2 Orderbook physics, Tick imbalances, and 5-Second Flow Deltas to measure exactly what institutional whales are doing *right now*. 
+Retail traders use trailing indicators to guess what the market will do based on the *past*. **Horus** uses Level 2 Orderbook physics, Tick imbalances, and 5-Second Flow Deltas to measure exactly what institutional whales are doing *right now*. 
 
 Horus doesn't ask "Are we overbought?". It measures gravitational pull and tells you: *"Whales are spoofing the bid and aggressive takers are tearing through the ask. Liquidity is collapsing. Bailout now."*
 

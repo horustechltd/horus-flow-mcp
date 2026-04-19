@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "horus-flow-mcp"
-version = "1.0.0"
+version = "1.0.2"
 description = "Institutional-grade crypto & equity orderflow intelligence for AI agents"
 readme = "README.md"
 authors = [
@@ -19,7 +19,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Topic :: Office/Business :: Financial :: Investment",
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
   "mcp>=1.0.0",
   "httpx>=0.27.0",

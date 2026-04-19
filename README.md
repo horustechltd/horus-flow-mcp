@@ -212,3 +212,10 @@ It features a **Local Edge Proof Tracker** that strictly measures 1-Minute Candl
 ---
 *Built with absolute precision for those who need to see the Matrix.*
 <br/>**— HORUS INTELLIGENCE**  👁️
+
+
+---
+
+*mcp-name: io.github.horustechltd/horus-flow-mcp*
+
+<!-- smithery cache buster -->

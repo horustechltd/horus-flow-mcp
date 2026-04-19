@@ -16,3 +16,4 @@ commandFunction: |-
       RAPIDAPI_KEY: config.RAPIDAPI_KEY
     }
   })
+

@@ -1,6 +1,18 @@
 startCommand:
   type: stdio
-  config:
-    command: uvx
-    args:
-      - horus-flow-mcp
+configSchema:
+  type: object
+  required:
+    - RAPIDAPI_KEY
+  properties:
+    RAPIDAPI_KEY:
+      type: string
+      description: Your RapidAPI Key for Horus Flow Intelligence
+commandFunction: |-
+  (config) => ({
+    command: 'uvx',
+    args: ['horus-flow-mcp'],
+    env: {
+      RAPIDAPI_KEY: config.RAPIDAPI_KEY
+    }
+  })

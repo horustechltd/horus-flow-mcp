@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "horus-flow-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Institutional-grade crypto & equity orderflow intelligence for AI agents"
 readme = "README.md"
 authors = [

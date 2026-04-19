@@ -149,7 +149,7 @@ async def get_api_info() -> str:
 
 
 # ─── Entry Point (FIXED SSE VERSION) ──────────────────────
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Horus Flow MCP Server (Public)")
     parser.add_argument(
         "--transport", choices=["stdio", "sse"], default="stdio",
@@ -163,3 +163,6 @@ if __name__ == "__main__":
         mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")
+
+if __name__ == "__main__":
+    main()

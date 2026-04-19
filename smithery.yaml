@@ -1,6 +1,6 @@
 startCommand:
   type: stdio
   config:
-    command: python3
+    command: uvx
     args:
-      - horus_mcp_public.py
+      - horus-flow-mcp

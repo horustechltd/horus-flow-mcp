@@ -1,0 +1,32 @@
+{
+  "serverInfo": {
+    "name": "horus-flow-mcp",
+    "version": "1.0.2"
+  },
+  "tools": [
+    {
+      "name": "get_crypto_flow",
+      "description": "Fetch real-time Level 2 orderbook flow and behavioral velocity court verdicts for crypto assets (e.g., BTCUSDT). Outputs a risk assessment, spoofing detection, and liquidity event warnings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "description": "The crypto symbol pair to analyze, e.g., 'BTCUSDT'" }
+        },
+        "required": ["symbol"]
+      }
+    },
+    {
+      "name": "get_equity_flow",
+      "description": "Fetch real-time institutional and retail order flow, dark pool indications, and behavioral court risk analysis for US Equity (e.g., AAPL, NVDA).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "description": "The stock ticker symbol to analyze, e.g., 'AAPL'" }
+        },
+        "required": ["symbol"]
+      }
+    }
+  ],
+  "resources": [],
+  "prompts": []
+}

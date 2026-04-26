@@ -12,10 +12,14 @@
   <p><strong>A True Market Gravity Engine for Autonomous AI Agents and HFT Traders.</strong></p>
 
   <p>
-    [![horus-flow-mcp MCP server](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/card.svg)](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp)
+    <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp">
+      <img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/card.svg" alt="horus-flow-mcp MCP server" />
+    </a>
   </p>
   <p>
-    [![horus-flow-mcp MCP server](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/score.svg)](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp)
+    <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp">
+      <img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/score.svg" alt="horus-flow-mcp MCP server" />
+    </a>
   </p>
 
   <p>

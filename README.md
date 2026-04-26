@@ -1,7 +1,7 @@
 # 🦅 Horus Flow MCP Server
 
 [![Smithery Badge](https://img.shields.io/badge/Smithery-Verified-green?style=flat-square&logo=github)](https://smithery.ai/mcp/horustechltd/horus-flow-mcp)
-[![Glama Quality](https://img.shields.io/badge/Quality-A--Tier-gold?style=flat-square&logo=ai)](https://glama.ai/mcp/horustechltd/horus-flow-mcp)
+[![Glama Quality](https://img.shields.io/badge/Quality-A--Tier-gold?style=flat-square&logo=ai)](https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp)
 [![Security: No Vulnerabilities](https://img.shields.io/badge/Security-No%20Vulnerabilities-brightgreen?style=flat-square)](https://github.com/horustechltd/horus-flow-mcp)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue?style=flat-square&logo=python)](https://github.com/horustechltd/horus-flow-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)

@@ -133,6 +133,31 @@ async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUS
     }
     return json.dumps(summary, indent=2)
 
+@mcp.tool()
+async def get_macro_blocks() -> str:
+    """
+    Get the overall US Equity Market Macro Trend (based on SPY orderflow) and recent Institutional Block Trades (Whales).
+    Use this to understand market sentiment and where big money is flowing in the US Stock Market.
+    """
+    data = await _fetch("/v1/flow/equity/macro-blocks")
+    if data.get("error"):
+        return json.dumps(data, indent=2)
+    
+    climate = data.get("spy_macro_climate", {})
+    blocks = data.get("recent_block_trades", [])
+    
+    result = f"🦅 SPY MACRO CLIMATE: {climate.get('market_mode')} (Buy Ratio: {climate.get('spy_buy_ratio')})\n\n"
+    result += f"🐋 RECENT BLOCK TRADES (>200k) (Total: {data.get('block_count')}):\n"
+    
+    if not blocks:
+        result += "- None in the last 5 minutes.\n"
+    else:
+        for b in blocks:
+            action = "SELL 🔴" if b["is_sell"] else "BUY 🟢"
+            result += f"- {b['symbol']} | {action} | ${b['notional']:,.2f} | {b['seconds_ago']}s ago\n"
+            
+    return result
+
 
 # ─── Resource: API Info ───────────────────────────────────
 @mcp.resource("horus://info")

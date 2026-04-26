@@ -1,6 +1,0 @@
-startCommand:
-  type: stdio
-  config:
-    command: python3
-    args:
-      - horus_mcp_public.py

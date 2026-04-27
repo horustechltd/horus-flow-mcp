@@ -6,12 +6,12 @@
     "url": "https://github.com/horustechltd/horus-flow-mcp",
     "source": "github"
   },
-  "version": "1.0.3",
+  "version": "1.0.2",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "horus-flow-mcp",
-      "version": "1.0.3",
+      "version": "1.0.2",
       "transport": {
         "type": "stdio"
       },

@@ -3,6 +3,7 @@
 
 [![smithery badge](https://smithery.ai/badge/horus-flow-mcp)](https://smithery.ai)
 [![RapidAPI](https://img.shields.io/badge/RapidAPI-Get_API_Key-blue.svg)](https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence)
+[![Developer Portal](https://img.shields.io/badge/Developer_Portal-Horus_Flow-black.svg)](https://flow.horustek.pro)
 
 An official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that empowers AI coding assistants (like Claude Desktop, Cursor, and Cline) with **Institutional-Grade Crypto & Equity Orderflow Intelligence**.
 

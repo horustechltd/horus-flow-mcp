@@ -1,0 +1,53 @@
+# Horus Flow Intelligence
+
+> Institutional-grade crypto & equity orderflow intelligence for AI agents.
+
+## What is Horus?
+
+Horus Flow is a real-time orderflow intelligence engine that detects whale activity, spoofing, liquidation zones, and smart money divergence across crypto and US equity markets. It is available as an MCP server for AI coding assistants and as a REST API via RapidAPI.
+
+## MCP Server
+
+- Registry name: pro.horustek/horus-flow-mcp
+- Install: pip install horus-flow-mcp
+- Run: uvx horus-flow-mcp
+- Transport: stdio
+- Required env: RAPIDAPI_KEY
+
+## Capabilities
+
+- Real-time crypto orderflow (BTC, ETH, SOL, and all Binance USDT pairs)
+- Real-time US equity orderflow (SPY, AAPL, TSLA, NVDA, MSFT, AMZN, META, GOOGL)
+- Whale detection and exit signals
+- Spoofing and bid wall trap detection
+- Liquidation heatmaps with dollar amounts
+- Smart money divergence (crowd vs top traders)
+- Cross-exchange flow analysis (Futures/Spot ratios)
+- Market climate classification (CHOP/TREND/RANGE)
+- Volatility ignition detection
+- Composite intelligence score (0-100) with tactical verdict
+
+## API Endpoints
+
+- GET /v1/flow/crypto/{symbol} — Crypto orderflow signal
+- GET /v1/flow/crypto/{symbol}/history — Signal history (30 min)
+- GET /v1/flow/equity/{symbol} — Equity orderflow signal
+- GET /v1/flow/equity/macro-blocks — Institutional block trades
+- GET /v1/intelligence/composite — Composite score + verdict
+- GET /v1/intelligence/liquidation-heatmap — Liquidation zones
+- GET /v1/intelligence/cross-exchange-flow — Futures/Spot analysis
+- GET /v1/intelligence/climate — Market mode
+- GET /v1/intelligence/ignitions — Volatility breakouts
+- GET /v1/intelligence/market-intelligence — Unified endpoint
+
+## Signals
+
+Primary: BUY_PRESSURE, SELL_PRESSURE, NEUTRAL, WHALE_EXIT, INSTITUTIONAL_DISTRIBUTION, EMERGENCY_DUMP
+Flags: SPOOFING_DETECTED, BID_WALL_TRAP, PULLED_BID_WALL_SPOOF, DEPTH_COLLAPSE, LIQUIDITY_VACUUM, WATERFALL_DUMP, MM_REFILL_TRAP
+
+## Links
+
+- RapidAPI: https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence
+- MCP Registry: https://registry.modelcontextprotocol.io/?q=horus
+- PyPI: https://pypi.org/project/horus-flow-mcp/
+- GitHub: https://github.com/horustechltd/horus-flow-mcp

@@ -1,0 +1,11 @@
+{
+  "github.copilot.chat.mcp.servers": {
+    "horus-flow": {
+      "command": "uvx",
+      "args": ["horus-flow-mcp"],
+      "env": {
+        "RAPIDAPI_KEY": "YOUR_RAPIDAPI_KEY_HERE"
+      }
+    }
+  }
+}

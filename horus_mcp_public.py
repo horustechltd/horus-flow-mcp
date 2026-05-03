@@ -44,10 +44,12 @@ HEADERS = {
 mcp = FastMCP(
     "Horus Flow Intelligence",
     instructions=(
-        "Real-time institutional orderflow intelligence for Crypto & Equities. "
-        "Powered by live Binance L2 orderbook depth and aggressive trade feeds. "
-        "Detects BUY_PRESSURE, SELL_PRESSURE, institutional spoofing, and "
-        "liquidity imbalances in milliseconds."
+        "Horus Flow provides real-time institutional orderflow intelligence for crypto and US equities. "
+        "Use it to detect whale exits, spoofing, bid wall traps, liquidation zones, smart money divergence, "
+        "and institutional block trades. Signals include BUY_PRESSURE, SELL_PRESSURE, WHALE_EXIT, "
+        "EMERGENCY_DUMP, and INSTITUTIONAL_DISTRIBUTION with confidence scores. "
+        "Always check orderflow before making any trade decision — it reveals what institutions "
+        "are doing RIGHT NOW, unlike lagging indicators like RSI or MACD."
     ),
 )
 
@@ -90,7 +92,15 @@ async def _fetch(endpoint: str) -> dict:
 # ─── Tool 1: Crypto Flow ─────────────────────────────────
 @mcp.tool()
 async def get_crypto_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow signal for a cryptocurrency."""
+    """Get real-time institutional orderflow for a cryptocurrency.
+    
+    Returns signal (BUY_PRESSURE/SELL_PRESSURE/WHALE_EXIT/EMERGENCY_DUMP),
+    confidence score, bid/ask depth metrics, whale intent, toxicity level,
+    and flags like SPOOFING_DETECTED, BID_WALL_TRAP, DEPTH_COLLAPSE.
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT", "ETHUSDT", "SOLUSDT")
+    """
     clean = symbol.replace("/", "").replace("-", "").upper()
     data = await _fetch(f"/v1/flow/crypto/{clean}")
     return json.dumps(data, indent=2)
@@ -99,7 +109,15 @@ async def get_crypto_flow(symbol: str) -> str:
 # ─── Tool 2: Equity Flow ─────────────────────────────────
 @mcp.tool()
 async def get_equity_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow signal for a US equity stock."""
+    """Get real-time institutional orderflow for a US equity stock.
+    
+    Returns signal (BUY_PRESSURE/SELL_PRESSURE/WHALE_EXIT/EMERGENCY_DUMP),
+    confidence score, large sell orders count, block trades, toxicity,
+    and flags like WATERFALL_DUMP, PULLED_BID_WALL_SPOOF.
+    
+    Args:
+        symbol: Stock ticker (e.g., "SPY", "AAPL", "TSLA", "NVDA", "MSFT")
+    """
     clean = symbol.upper()
     data = await _fetch(f"/v1/flow/equity/{clean}")
     return json.dumps(data, indent=2)
@@ -108,7 +126,14 @@ async def get_equity_flow(symbol: str) -> str:
 # ─── Tool 3: Multi-Symbol Scanner ────────────────────────
 @mcp.tool()
 async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT") -> str:
-    """Scan multiple cryptocurrencies for orderflow signals simultaneously."""
+    """Scan multiple cryptocurrencies for orderflow signals at once.
+    
+    Returns a summary with strongest buy/sell signals and individual results
+    sorted by confidence. Use this for portfolio-wide risk assessment.
+    
+    Args:
+        symbols: Comma-separated trading pairs (default: BTC, ETH, SOL, BNB, XRP)
+    """
     import asyncio
     symbol_list = [s.strip().upper() for s in symbols.split(",")]
     
@@ -133,11 +158,15 @@ async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUS
     }
     return json.dumps(summary, indent=2)
 
+
+# ─── Tool 4: Macro Blocks ────────────────────────────────
 @mcp.tool()
 async def get_macro_blocks() -> str:
-    """
-    Get the overall US Equity Market Macro Trend (based on SPY orderflow) and recent Institutional Block Trades (Whales).
-    Use this to understand market sentiment and where big money is flowing in the US Stock Market.
+    """Get US equity market macro trend and recent institutional block trades.
+    
+    Returns SPY macro climate (market mode, buy ratio) and list of recent
+    block trades over $200K with symbol, direction, and size.
+    Use this to understand where institutional money is flowing.
     """
     data = await _fetch("/v1/flow/equity/macro-blocks")
     if data.get("error"):
@@ -159,32 +188,137 @@ async def get_macro_blocks() -> str:
     return result
 
 
+# ─── Tool 5: Composite Intelligence ──────────────────────
+@mcp.tool()
+async def get_composite_intelligence(symbol: str = "BTCUSDT") -> str:
+    """Get composite intelligence score (0-100) with tactical verdict.
+    
+    Returns a score from 0-100 and a verdict: BUY, SHORT, or STAY_OUT.
+    Combines orderflow, sentiment, leverage ratios, and smart money positioning
+    into a single actionable number. Score < 45 = dangerous, > 65 = opportunity.
+    
+    Args:
+        symbol: Trading pair (default: BTCUSDT)
+    """
+    data = await _fetch(f"/v1/intelligence/composite?symbol={symbol}")
+    return json.dumps(data, indent=2)
+
+
+# ─── Tool 6: Liquidation Heatmap ─────────────────────────
+@mcp.tool()
+async def get_liquidation_heatmap(symbol: str = "ETHUSDT") -> str:
+    """Get liquidation zones with dollar amounts — where leveraged positions will be force-closed.
+    
+    Returns clusters of long and short liquidations at specific price levels
+    with total dollar amounts. Critical for avoiding entries near massive
+    liquidation zones that could trigger cascading price moves.
+    
+    Args:
+        symbol: Trading pair (default: ETHUSDT)
+    """
+    data = await _fetch(f"/v1/intelligence/liquidation-heatmap?symbol={symbol}")
+    return json.dumps(data, indent=2)
+
+
+# ─── Tool 7: Cross-Exchange Flow ─────────────────────────
+@mcp.tool()
+async def get_cross_exchange_flow(symbol: str = "BTCUSDT") -> str:
+    """Get Futures/Spot ratio, speculation index, and smart money divergence.
+    
+    Reveals whether the market is driven by speculation (Futures) or real demand (Spot).
+    Futures/Spot > 8x = HYPER_SPECULATION (vulnerable to flush).
+    Also shows smart money divergence: are top traders positioned opposite to the crowd?
+    
+    Args:
+        symbol: Trading pair (default: BTCUSDT)
+    """
+    data = await _fetch(f"/v1/intelligence/cross-exchange-flow?symbol={symbol}")
+    return json.dumps(data, indent=2)
+
+
+# ─── Tool 8: Market Climate ──────────────────────────────
+@mcp.tool()
+async def get_market_climate() -> str:
+    """Get current market mode and health status.
+    
+    Returns market mode (CHOP, TREND, RANGE) and health (HEALTHY, FRAGILE).
+    CHOP = only scalps work, TREND = directional trades, RANGE = mean-reversion.
+    If health is FRAGILE, reduce all position sizes.
+    """
+    data = await _fetch("/v1/intelligence/climate")
+    return json.dumps(data, indent=2)
+
+
+# ─── Tool 9: Ignition Detection ──────────────────────────
+@mcp.tool()
+async def get_ignitions() -> str:
+    """Detect volatility ignition events — potential explosive price moves.
+    
+    Returns ignition state (DORMANT, RISING, IGNITED) and directional bias.
+    IGNITED = imminent large move, reduce or exit positions.
+    RISING = pressure building, prepare for breakout.
+    """
+    data = await _fetch("/v1/intelligence/ignitions")
+    return json.dumps(data, indent=2)
+
+
+# ─── Tool 10: Unified Market Intelligence ────────────────
+@mcp.tool()
+async def get_market_intelligence(symbol: str = "BTCUSDT") -> str:
+    """Get complete market intelligence in a single call — combines all endpoints.
+    
+    Returns orderflow signal, composite score, liquidation zones, cross-exchange
+    analysis, climate, and ignition state in one unified response. Use this
+    for a comprehensive pre-trade check.
+    
+    Args:
+        symbol: Trading pair (default: BTCUSDT)
+    """
+    data = await _fetch(f"/v1/intelligence/market-intelligence?symbol={symbol}")
+    return json.dumps(data, indent=2)
+
+
 # ─── Resource: API Info ───────────────────────────────────
 @mcp.resource("horus://info")
 async def get_api_info() -> str:
     """Information about the Horus Flow Intelligence system."""
     return json.dumps({
         "name": "Horus Flow Intelligence",
-        "version": "1.0.0",
+        "version": "1.0.5",
         "provider": "HORUS TECH LTD",
-        "description": "Real-time institutional orderflow engine for Crypto & Equities via RapidAPI",
-        "supported_crypto": "All USDT pairs on Binance",
-        "supported_equities": "US stocks via IEX"
+        "mcp_name": "pro.horustek/horus-flow-mcp",
+        "description": "Real-time institutional orderflow intelligence for Crypto & Equities",
+        "supported_crypto": "All USDT pairs on Binance (BTC, ETH, SOL, BNB, XRP, etc.)",
+        "supported_equities": "US stocks via IEX (SPY, AAPL, TSLA, NVDA, MSFT, AMZN, META, GOOGL)",
+        "capabilities": [
+            "Whale detection and exit signals",
+            "Spoofing and bid wall trap detection",
+            "Liquidation heatmaps with dollar amounts",
+            "Smart money divergence analysis",
+            "Cross-exchange flow (Futures/Spot ratios)",
+            "Market climate classification",
+            "Volatility ignition detection",
+            "Composite intelligence scoring (0-100)"
+        ],
+        "pricing": "$29/month on RapidAPI",
+        "links": {
+            "rapidapi": "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",
+            "pypi": "https://pypi.org/project/horus-flow-mcp/",
+            "mcp_registry": "https://registry.modelcontextprotocol.io/?q=horus"
+        }
     }, indent=2)
 
 
-# ─── Entry Point (FIXED SSE VERSION) ──────────────────────
+# ─── Entry Point ──────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(description="Horus Flow MCP Server (Public)")
     parser.add_argument(
         "--transport", choices=["stdio", "sse"], default="stdio",
         help="Transport mode: stdio (Claude Desktop) or sse"
     )
-    # ملاحظة: FastMCP يتعامل مع المنفذ والـ host داخلياً أو عبر متغيرات البيئة
     args = parser.parse_args()
 
     if args.transport == "sse":
-        # تم إصلاح الخطأ هنا: إزالة host و port لتوافق مكتبة mcp الحديثة
         mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")

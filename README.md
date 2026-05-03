@@ -236,6 +236,6 @@ It features a **Local Edge Proof Tracker** that strictly measures 1-Minute Candl
 
 ---
 
-*mcp-name: io.github.horustechltd/horus-flow-mcp*
+*mcp-name: pro.horustek/horus-flow-mcp*
 
 <!-- smithery cache buster -->

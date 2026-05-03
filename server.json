@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.horustechltd/horus-flow-mcp",
-  "description": "Institutional crypto & equity orderflow intelligence for AI trading agents.",
+  "name": "pro.horustek/horus-flow-mcp",
+  "description": "Crypto & equity orderflow: whale detection, spoofing, liquidation heatmaps, smart money for AI",
   "repository": {
     "url": "https://github.com/horustechltd/horus-flow-mcp",
     "source": "github"
   },
-  "version": "1.0.2",
+  "version": "1.0.6",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "horus-flow-mcp",
-      "version": "1.0.2",
+      "version": "1.0.6",
       "transport": {
         "type": "stdio"
       },

@@ -4,15 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "horus-flow-mcp"
-version = "1.0.2"
-description = "Institutional-grade crypto & equity orderflow intelligence for AI agents"
+version = "1.0.6"
+description = "Real-time orderflow intelligence for crypto & equities — whale detection, spoofing alerts, liquidation heatmaps, smart money divergence, block trades, and AI composite scoring"
 readme = "README.md"
 authors = [
   { name = "Horus Tech Ltd", email = "admin@horustek.pro" }
 ]
 keywords = [
-  "mcp", "orderflow", "trading", "crypto", 
-  "institutional", "binance", "alpaca", "ai-agents"
+  "mcp", "orderflow", "trading", "crypto", "equities",
+  "whale-detection", "spoofing", "liquidation", "smart-money",
+  "block-trades", "dark-pool", "ai-agents", "bitcoin", "ethereum"
 ]
 classifiers = [
   "Programming Language :: Python :: 3",

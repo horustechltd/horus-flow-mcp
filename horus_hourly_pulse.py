@@ -360,108 +360,109 @@ class HorusHourlyPulse:
 
         self.last_stance = current_stance
 
-        # If not major session and no stance change, generate a SLEEK FLASH PULSE
+        # Determine humanized verdict & advice
+        if trust_score >= 60 and cortex_regime in ["EXPANSION", "BUILDING"]:
+            verdict_badge = "🟢 <b>إشارة إيجابية:</b> تجميع حيتان وصعود مدعوم بالسيولة الحقيقية"
+            golden_advice = "الزخم ممتاز وتدفق السيولة يدعم الصعود. التزم بإدارة رأس المال وضع وقف خسارتك أسفل الدعم القريب."
+        elif cortex_regime in ["BREAKDOWN", "EXHAUSTION"] or trust_score < 35:
+            verdict_badge = "🔴 <b>وضع الدفاع والحذر:</b> رصد تصريف بيعي خفي وسحب سيولة من كبار المتداولين"
+            golden_advice = "احذر من الشراء عند القمم! رادارات السيولة ترصد مصائد للمضاربين الصغار. احتفظ بالكاش وراقب مناطق الخطر."
+        else:
+            verdict_badge = "🟡 <b>وضع المراقبة المشددة:</b> السوق في مرحلة تذبذب وإعادة تقييم (لا تطارد الشموع)"
+            golden_advice = "وفر سيولتك وتجنب الرافعة المالية المرتفعة. السوق يختبر مناطق حاسمة وأي كسر للدعم قد يسبب تصفية سريعة."
+
+        # If not major session and no stance change, generate a SLEEK HUMANIZED FLASH PULSE
         if not should_send_full:
-            flash = f"⚡ <b>نبضة سريعة | HORUS QUICK CORTEX</b>\n"
+            flash = f"⚡ <b>نبضة قناص الألفا السريعة | HORUS QUICK PULSE</b>\n"
             flash += f"━━━━━━━━━━━━━━━━━━━━\n"
-            flash += f"⏰ <code>{now_utc}</code> | 🪙 <b>BTC:</b> <code>${btc_price:,.1f} ({btc.get('chg_24h', 0):+.2f}%)</code>\n\n"
-            flash += f"🚦 <b>الموقف:</b> {traffic_light} | 🛡️ <b>الموثوقية:</b> <code>{trust_score:.0f}/100</code>\n"
-            flash += f"🎯 <b>المستويات الحاكمة:</b> الخطر <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code> ⟷ الأمان <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code>\n"
-            flash += f"💡 <i>{cortex_summary if cortex_summary else 'تضارب بين المؤشرات يستوجب تقليص المخاطر. المنظومة تراقب ثبات النطاق.'}</i>"
+            flash += f"⏰ <code>{now_utc}</code> | 🪙 <b>البيتكوين:</b> <code>${btc_price:,.0f} ({btc.get('chg_24h', 0):+.2f}%)</code>\n\n"
+            flash += f"🚦 <b>القرار اللحظي لحورس:</b>\n{verdict_badge}\n"
+            flash += f"🛡️ <b>مؤشر أمان السوق:</b> <code>{trust_score:.0f}%</code>\n\n"
+            flash += f"🎯 <b>أرقام الحسم للمحفظة:</b>\n"
+            flash += f"🛑 <b>جرس الخطر:</b> <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code>\n"
+            flash += f"🚀 <b>بوابة الأمان:</b> <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code>\n\n"
+            flash += f"💡 <b>نصيحة حورس لمحفظتك:</b>\n<i>«{golden_advice}»</i>\n"
+            flash += f"━━━━━━━━━━━━━━━━━━━━\n"
+            flash += f"📊 <b>لمتابعة رادار السيولة المباشر والداشبورد:</b>\n👉 https://flow.horustek.pro/dash/"
             return flash
 
         # ═════════════════════════════════════════════════
-        # 🦅 THE UNIFIED FULL CORTEX REPORT OUTPUT
+        # 🦅 THE UNIFIED FULL HUMANIZED CORTEX REPORT
         # ═════════════════════════════════════════════════
-        report = f"🦅 <b>صوت عقل حورس الإدراكي | HORUS CORTEX PULSE</b>\n"
-        report += f"<i>«العين ترصد السيولة عبر Horus Flow، والعقل يزن القرار عبر Horus Cortex»</i>\n"
-        report += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        report += f"⏰ <b>توقيت النبضة:</b> <code>{now_utc}</code>\n\n"
+        report = f"🦅 <b>نبضة قناص الألفا | نبض حركة السوق والسيولة</b>\n"
+        report += f"<i>«نرصد أثر الحيتان.. لتقتنص الصفقة بأمان»</i>\n"
+        report += f"━━━━━━━━━━━━━━━━━━━━\n"
+        report += f"⏰ <b>التوقيت:</b> <code>{now_utc}</code>\n\n"
 
-        # SECTION 1: CORTEX EXECUTIVE BRIEF
-        report += f"🚦 <b>الموقف الإدراكي لحورس:</b>\n"
-        report += f"{traffic_light} | 🛡️ <b>مستوى الموثوقية:</b> <code>{trust_score:.0f} / 100</code>\n"
-        report += f"🪙 <b>البيتكوين:</b> <code>${btc_price:,.1f}</code> | <b>نسبة الشراء التنافسي (Taker):</b> <code>{cortex_taker:.2f}</code>\n\n"
+        # SECTION 1: VERDICT
+        report += f"🚦 <b>القرار اللحظي لحورس:</b>\n"
+        report += f"{verdict_badge}\n"
+        report += f"🛡️ <b>درجة أمان السوق:</b> <code>{trust_score:.0f}%</code>\n"
+        report += f"🪙 <b>سعر البيتكوين:</b> <code>${btc_price:,.0f}</code> ({btc.get('chg_24h', 0):+.2f}%)\n\n"
 
+        # SECTION 2: WHALE NARRATIVE
         if cortex_summary:
-            report += f"⚖️ <b>الرؤية التحليلية لحورس:</b>\n{cortex_summary}\n\n"
+            clean_summary = cortex_summary.replace("السوق في حالة [", "السوق يمر بحالة [").replace("بمستوى موثوقية", "بدرجة أمان")
+            report += f"🔍 <b>ماذا تفعل الحيتان خلف الكواليس؟</b>\n{clean_summary}\n\n"
 
         if risk_factors:
-            report += f"⚠️ <b>عوامل الخطر المرصودة لحظياً:</b>\n"
+            report += f"⚠️ <b>نقاط انتباه وتحذير للمضاربين:</b>\n"
             for rf in risk_factors[:3]:
-                report += f"• {rf}\n"
+                rf_clean = rf.replace("Taker:", "ضغط الشراء المباشر:").replace("Bid Wall Trap", "مصيدة جدار الشراء الوهمي")
+                report += f"• {rf_clean}\n"
             report += "\n"
 
-        # SECTION 2: DECISION MAP & BOUNDARIES
-        report += f"🎯 <b>خريطة المعركة وشروط الحسم الرقمية:</b>\n"
-        if what_improves:
-            report += f"🟢 <b>شروط تأكيد القوة وتحسن الموقف:</b>\n"
-            for idx, imp in enumerate(what_improves[:2], 1):
-                report += f"  {idx}. {imp}\n"
-        else:
-            report += f"• 🚀 <b>مفتاح الأمان:</b> الاستقرار المؤكد أعلى <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code>\n"
+        # SECTION 3: DECISION MAP & BOUNDARIES
+        report += f"🎯 <b>أرقام المعركة (خريطة الدخول والخروج):</b>\n"
+        report += f"🟢 <b>شرط استمرار الإيجابية وبدء الشراء:</b>\n"
+        report += f"  • اختراق حاجز الأمان عند <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code> والإغلاق فوقه بثبات.\n"
+        report += f"🔴 <b>جرس الإنذار ووقف الخسارة:</b>\n"
+        report += f"  • كسر الدعم الهيكلي عند <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code> يفتح الباب لمزيد من الهبوط.\n\n"
 
-        if what_worsens:
-            report += f"🔴 <b>شروط كسر السوق وتدهور الموقف:</b>\n"
-            for idx, wrs in enumerate(what_worsens[:2], 1):
-                report += f"  {idx}. {wrs}\n"
-        else:
-            report += f"• 🛑 <b>منطقة الخطر:</b> <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code>\n"
+        # SECTION 4: LIVE ASSET TELEMETRY (CLEAN ARABIC)
+        report += f"━━━━━━━━━━━━━━━━━━━━\n"
+        report += f"🔬 <b>رادار العملات الكبرى (تشريح السيولة):</b>\n"
 
-        report += f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        report += f"🔬 <b>رادارات Horus Flow العميقة (تشريح السيولة الحية):</b>\n"
-
-        # SECTION 3: LIVE DEEP TELEMETRY
         for sym in SYMBOLS:
             d = asset_data.get(sym, {})
             price = d.get("price", 0.0)
             chg = d.get("chg_24h", 0.0)
             flow_info = d.get("flow", {})
-            wall_side = flow_info.get("wall_side", "NONE")
-            bid_ask_ratio = flow_info.get("bid_ask_ratio", 1.0)
-            buy_ratio = flow_info.get("buy_sell_ratio", 0.5)
             whale_dir = flow_info.get("whale_dir", "NEUTRAL")
             whale_buy = flow_info.get("whale_buy", 0.5)
-            whale_exec = flow_info.get("whale_exec", 0.0)
-            whale_persist = flow_info.get("whale_persist", 0)
-
-            crowd_bias = d.get("crowd_bias", "NEUTRAL")
-            top_ls = d.get("top_ls", 1.0)
             smart_divergence = d.get("smart_divergence", False)
             gravity_dir = d.get("gravity_dir", "NEUTRAL")
-            gravity_score = d.get("gravity_score", 0.0)
             danger_p = d.get("danger_level_price", 0.0)
-            danger_d = d.get("danger_dist_pct", 0.0)
 
-            cluster_txt = f" (مغناطيس السيولة: <code>${danger_p:,.2f} / {danger_d:+.1f}%</code>)" if danger_p > 0 else ""
+            s_name = "البيتكوين (BTC)" if "BTC" in sym else "الإيثيريوم (ETH)" if "ETH" in sym else "سولانا (SOL)"
 
-            report += f"\n🪙 <b>{sym}</b> — <code>${price:,.2f} ({chg:+.2f}%)</code>\n"
+            if whale_dir == "LONG" and whale_buy >= 0.65:
+                w_txt = f"🟢 شراء وتجميع حيتان قوي ({whale_buy*100:.0f}%)"
+            elif whale_dir == "SHORT" and whale_buy <= 0.35:
+                w_txt = f"🔴 ضغط بيعي وتصريف حيتان واضح"
+            else:
+                w_txt = "⚪ نشاط حيتان هادئ ومتوازن"
 
-            # Orderbook
-            wall_desc = f"جدار {wall_side} ({bid_ask_ratio:.1f}x)" if wall_side != "NONE" and bid_ask_ratio >= 1.5 else "متوازن (Balanced)"
-            report += f"• <b>دفتر الأوامر:</b> {wall_desc} | تنفيذ الشراء المباشر: <code>{buy_ratio:.2f}</code>\n"
+            if gravity_dir == "DOWN" and danger_p > 0:
+                grav_txt = f"⬇️ جاذبية هابطة (مغناطيس السيولة يسحب نحو <code>${danger_p:,.1f}</code>)"
+            elif gravity_dir == "UP" and danger_p > 0:
+                grav_txt = f"⬆️ جاذبية صاعدة (مغناطيس السيولة يسحب نحو <code>${danger_p:,.1f}</code>)"
+            else:
+                grav_txt = "➡️ السيولة متمركزة في نطاق عرضي"
 
-            # Whale activity
-            if whale_dir != "NEUTRAL":
-                w_tag = "سلوك مستمر" if whale_persist >= 10 else "ومضة لحظية"
-                report += f"• <b>تدفق الحيتان:</b> {whale_dir} ({whale_buy*100:.0f}% شراء | شدة: {whale_exec:.0f}/100 | {w_tag}: {whale_persist}s)\n"
+            div_txt = " | ⚠️ <i>انحراف: الحيتان يخالفون اتجاه الجمهور!</i>" if smart_divergence else ""
 
-            # Positioning & Divergence
-            div_icon = "⚠️ <b>انحراف الأموال الذكية</b>" if smart_divergence else "متطابق"
-            report += f"• <b>تموضع الرافعة:</b> الجمهور: <code>{crowd_bias}</code> | كبار المتداولين: <code>{top_ls:.2f}x</code> ({div_icon})\n"
+            report += f"\n🪙 <b>{s_name}</b> — <code>${price:,.1f} ({chg:+.2f}%)</code>\n"
+            report += f"• <b>سلوك الحيتان:</b> {w_txt}\n"
+            report += f"• <b>مسار السيولة:</b> {grav_txt}{div_txt}\n"
 
-            # Gravity
-            grav_icon = "⬇️" if gravity_dir == "DOWN" else "⬆️" if gravity_dir == "UP" else "➡️"
-            report += f"• <b>جاذبية السيولة:</b> {grav_icon} <code>{gravity_dir}</code> ({gravity_score:.2f}){cluster_txt}\n"
-
-        # SECTION 4: INSTITUTIONAL CARD
-        report += f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        report += f"📋 <b>البطاقة الهيكلية (Horus Cortex Matrix):</b>\n"
-        report += f"• <b>هيكل السوق:</b> <code>{cortex_regime}</code> ({'إجهاد في الزخم / حذر' if trust_score < 40 else 'حركة صحية متوازنة'})\n"
-        report += f"• <b>المسار الإدراكي:</b> <code>{cortex_dir}</code> | <b>اشتعال السوق العام:</b> <code>{cortex_ignition:.2f}</code>\n"
-        report += f"• <b>توجيه الأسلحة والمضاعف:</b> <code>{cortex.get('weapons_policy', {}).get('policy_reason', 'Selective Guarded Operations') if cortex else 'حفظ رأس المال'}</code>\n"
-        report += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        report += f"🔗 <i>بيانات التدفق اللحظية وعقل الكورتكس متاحة للأبوات ووكلاء الذكاء عبر Horus Flow API & MCP.</i>\n"
+        # SECTION 5: GOLDEN ADVICE & CTA
+        report += f"\n━━━━━━━━━━━━━━━━━━━━\n"
+        report += f"💡 <b>نصيحة قناص الألفا لمحفظتك:</b>\n"
+        report += f"<i>«{golden_advice}»</i>\n"
+        report += f"━━━━━━━━━━━━━━━━━━━━\n"
+        report += f"📊 <b>لمتابعة رادار السيولة المباشر والداشبورد:</b>\n"
+        report += f"👉 https://flow.horustek.pro/dash/\n"
 
         return report
 

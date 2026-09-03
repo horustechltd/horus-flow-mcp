@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation — Horus Flow Intelligence</title>
+    <meta name="description" content="Complete API reference for Horus Flow Intelligence. Interactive endpoint explorer with live testing for real-time crypto and equity orderflow.">
+    <meta name="keywords" content="API documentation, developer portal, REST API, orderflow API, AI trading, crypto API, algorithmic trading, Horus Flow, MCP Server">
+    <meta name="author" content="Horus Tech Ltd">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://flow.horustek.pro/docs.html">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://flow.horustek.pro/docs.html">
+    <meta property="og:title" content="Horus Flow API Documentation">
+    <meta property="og:description" content="Explore institutional-grade endpoints for real-time market microstructure, whale detection, and orderflow analytics. Test endpoints live in your browser.">
+    <meta property="og:site_name" content="Horus Flow Intelligence">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Horus Flow Developer Portal">
+    <meta name="twitter:description" content="Interactive API documentation for autonomous trading agents. Integrates with Python, Node.js, and MCP.">
+
+    <!-- JSON-LD WebAPI Documentation -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Horus Flow API Reference",
+        "description": "Complete interactive documentation for Horus Flow REST API.",
+        "publisher": {
+            "@type": "Organization",
+            "name": "Horus Tech Ltd",
+            "url": "https://horustek.pro"
+        }
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/brand.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🦅</text></svg>">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:var(--font-main); background:var(--bg-primary); color:var(--text-primary); overflow:hidden; height:100vh; }
+
+        .topbar { height:52px; background:var(--bg-card); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; padding:0 20px; z-index:100; }
+        .topbar-left { display:flex; align-items:center; gap:16px; }
+        .topbar-logo { display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text-primary); }
+        .topbar-logo .icon { width:30px; height:30px; background:var(--gold-gradient); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
+        .topbar-logo span { font-family:var(--font-mono); font-weight:900; font-size:0.9rem; letter-spacing:1px; }
+        .topbar-logo .muted { font-weight:400; color:var(--text-muted); }
+        .topbar-sep { width:1px; height:24px; background:var(--border-subtle); }
+        .topbar-nav { display:flex; gap:4px; }
+        .topbar-nav a { padding:6px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; color:var(--text-secondary); text-decoration:none; transition:all 0.15s; }
+        .topbar-nav a:hover { color:var(--text-primary); background:var(--bg-secondary); }
+        .topbar-nav a.active { color:var(--gold-primary); background:var(--gold-glow); }
+        .topbar-right { display:flex; align-items:center; gap:12px; }
+        .topbar-cta { padding:6px 18px; border-radius:20px; font-size:0.75rem; font-weight:700; background:var(--gold-gradient); color:#000; text-decoration:none; transition:all 0.15s; }
+        .topbar-cta:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(255,179,0,0.2); color:#000; }
+        .topbar-user-info { font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono); }
+
+        .docs-layout { display:flex; height:calc(100vh - 52px); }
+
+        /* SIDEBAR */
+        .docs-sidebar { width:260px; background:var(--bg-card); border-right:1px solid var(--border-subtle); overflow-y:auto; flex-shrink:0; }
+        .docs-sidebar::-webkit-scrollbar { width:4px; }
+        .docs-sidebar::-webkit-scrollbar-thumb { background:var(--border-subtle); border-radius:4px; }
+        .sb-search { padding:12px; }
+        .sb-search input { width:100%; padding:8px 12px; background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-primary); font-size:0.78rem; font-family:var(--font-main); outline:none; }
+        .sb-search input:focus { border-color:var(--gold-primary); }
+        .sb-search input::placeholder { color:var(--text-muted); }
+        .sb-group-title { padding:8px 16px 4px; font-size:0.6rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+        .sb-group-title .chevron { font-size:0.55rem; transition:transform 0.2s; }
+        .sb-group.collapsed .chevron { transform:rotate(-90deg); }
+        .sb-group.collapsed .sb-items { display:none; }
+        .sb-item { display:flex; align-items:center; gap:8px; padding:7px 16px; cursor:pointer; transition:all 0.12s; border-left:2px solid transparent; }
+        .sb-item:hover { background:var(--bg-secondary); }
+        .sb-item.active { background:var(--gold-glow); border-left-color:var(--gold-primary); }
+        .sb-item .method { font-family:var(--font-mono); font-size:0.55rem; font-weight:800; padding:2px 5px; border-radius:3px; }
+        .m-get { background:rgba(0,230,118,0.12); color:var(--accent-green); }
+        .sb-item .path { font-family:var(--font-mono); font-size:0.7rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sb-item.active .path { color:var(--text-primary); }
+        .sb-item .lock { font-size:0.55rem; margin-left:auto; opacity:0.4; }
+        .sb-badge { margin-left:auto; font-size:0.55rem; padding:1px 6px; border-radius:8px; font-weight:700; background:var(--gold-glow); color:var(--gold-primary); font-family:var(--font-mono); }
+
+        /* CENTER */
+        .docs-center { flex:1; overflow-y:auto; padding:28px 36px 60px; min-width:0; }
+        .docs-center::-webkit-scrollbar { width:6px; }
+        .docs-center::-webkit-scrollbar-thumb { background:var(--border-subtle); border-radius:4px; }
+        .ep-header { margin-bottom:28px; }
+        .ep-method-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:6px; font-family:var(--font-mono); font-size:0.75rem; font-weight:800; margin-bottom:12px; }
+        .ep-method-badge.get { background:rgba(0,230,118,0.1); color:var(--accent-green); }
+        .ep-url { font-family:var(--font-mono); font-size:0.82rem; color:var(--text-secondary); background:var(--bg-secondary); padding:10px 16px; border-radius:6px; border:1px solid var(--border-subtle); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; word-break:break-all; }
+        .ep-url .copy-url { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.8rem; padding:4px; }
+        .ep-url .copy-url:hover { color:var(--gold-primary); }
+        .ep-title { font-size:1.5rem; font-weight:800; margin-bottom:8px; }
+        .ep-desc { color:var(--text-secondary); font-size:0.92rem; line-height:1.7; }
+        .doc-section { margin-top:32px; }
+        .doc-section h3 { font-size:0.95rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .auth-box { background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:8px; padding:16px; }
+        .auth-box .auth-header { font-family:var(--font-mono); font-size:0.7rem; font-weight:700; color:var(--gold-primary); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+        .auth-box code { font-family:var(--font-mono); font-size:0.78rem; color:var(--accent-green); background:rgba(0,230,118,0.06); padding:2px 8px; border-radius:4px; }
+        .auth-key-display { margin-top:10px; padding:8px 12px; background:var(--bg-primary); border:1px solid var(--border-subtle); border-radius:6px; font-family:var(--font-mono); font-size:0.72rem; color:var(--gold-primary); cursor:pointer; display:flex; align-items:center; justify-content:space-between; word-break:break-all; }
+        .auth-key-display:hover { border-color:var(--gold-primary); }
+        .response-example { background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden; }
+        .response-example .resp-header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:rgba(0,230,118,0.05); border-bottom:1px solid var(--border-subtle); }
+        .response-example .resp-status { font-family:var(--font-mono); font-size:0.7rem; font-weight:700; color:var(--accent-green); }
+        .response-example .resp-copy { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.7rem; font-family:var(--font-main); }
+        .response-example .resp-copy:hover { color:var(--gold-primary); }
+        .response-example pre { padding:16px; font-family:var(--font-mono); font-size:0.75rem; line-height:1.7; color:var(--text-secondary); overflow-x:auto; margin:0; }
+        .error-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .error-table th { text-align:left; padding:8px 12px; background:var(--bg-secondary); font-family:var(--font-mono); font-size:0.65rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border-subtle); }
+        .error-table td { padding:8px 12px; border-bottom:1px solid var(--border-subtle); }
+        .err-code { font-family:var(--font-mono); font-weight:700; }
+        .err-code.c2 { color:var(--accent-green); }
+        .err-code.c4 { color:var(--accent-red); }
+        .rate-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+        .rate-card { background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:8px; padding:12px; text-align:center; }
+        .rate-card .tier-name { font-family:var(--font-mono); font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px; }
+        .rate-card .tier-val { font-family:var(--font-mono); font-size:1.1rem; font-weight:900; }
+        .rate-card .tier-unit { font-size:0.65rem; color:var(--text-muted); }
+        .rate-card.current { border-color:var(--gold-primary); background:var(--gold-glow); }
+        .rate-card.current .tier-name { color:var(--gold-primary); }
+        .cg { color:var(--gold-primary); } .cs { color:var(--accent-green); } .cc { color:var(--text-muted); font-style:italic; } .cf { color:var(--accent-blue); } .ck { color:var(--accent-purple); } .cn { color:var(--accent-red); }
+
+        /* === RIGHT PANEL — RapidAPI Style === */
+        .docs-right { width:400px; background:var(--bg-secondary); border-left:1px solid var(--border-subtle); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; }
+        .rt-url-bar { padding:10px 16px; background:var(--bg-card); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; gap:8px; }
+        .rt-method { font-family:var(--font-mono); font-size:0.7rem; font-weight:800; color:var(--accent-green); background:rgba(0,230,118,0.1); padding:4px 10px; border-radius:4px; }
+        .rt-url { font-family:var(--font-mono); font-size:0.68rem; color:var(--text-secondary); word-break:break-all; line-height:1.5; }
+        .rt-tabs { display:flex; background:var(--bg-card); border-bottom:1px solid var(--border-subtle); }
+        .rt-tab { flex:1; padding:9px 8px; font-size:0.72rem; font-weight:600; color:var(--text-muted); cursor:pointer; border:none; background:none; border-bottom:2px solid transparent; transition:all 0.15s; font-family:var(--font-main); text-align:center; }
+        .rt-tab:hover { color:var(--text-primary); }
+        .rt-tab.active { color:var(--gold-primary); border-bottom-color:var(--gold-primary); }
+        .rt-body { flex:1; overflow-y:auto; min-height:0; }
+        .rt-body::-webkit-scrollbar { width:4px; }
+        .rt-body::-webkit-scrollbar-thumb { background:var(--border-subtle); border-radius:4px; }
+        .rt-empty { padding:32px 16px; text-align:center; color:var(--text-muted); font-size:0.82rem; }
+
+        /* Params */
+        .rt-params { padding:8px 0; }
+        .rt-param { padding:10px 16px; border-bottom:1px solid var(--border-subtle); }
+        .rt-param-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+        .rt-param-name { font-family:var(--font-mono); font-size:0.78rem; font-weight:700; color:var(--text-primary); }
+        .rt-req { color:var(--accent-red); font-size:0.8rem; }
+        .rt-param-type { font-family:var(--font-mono); font-size:0.65rem; color:var(--accent-blue); background:rgba(68,138,255,0.08); padding:2px 8px; border-radius:4px; }
+        .rt-param-input { width:100%; padding:8px 12px; background:var(--bg-primary); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-primary); font-family:var(--font-mono); font-size:0.8rem; font-weight:700; outline:none; transition:border-color 0.15s; }
+        .rt-param-input:focus { border-color:var(--gold-primary); box-shadow:0 0 0 2px var(--gold-glow); }
+        .rt-param-desc { font-size:0.72rem; color:var(--text-muted); margin-top:6px; line-height:1.5; }
+
+        /* Code Snippets */
+        .rt-lang-tabs { display:flex; gap:4px; padding:8px 16px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+        .rt-lang { padding:4px 12px; border-radius:4px; font-size:0.68rem; font-weight:600; border:1px solid var(--border-subtle); background:none; color:var(--text-muted); cursor:pointer; font-family:var(--font-mono); transition:all 0.15s; text-transform:lowercase; }
+        .rt-lang:hover { color:var(--text-primary); border-color:var(--text-muted); }
+        .rt-lang.active { color:var(--gold-primary); border-color:var(--gold-primary); background:var(--gold-glow); }
+        .rt-code-wrap { position:relative; padding:16px; }
+        .rt-code-copy { position:absolute; top:8px; right:8px; background:var(--bg-card); border:1px solid var(--border-subtle); color:var(--text-muted); padding:4px 10px; border-radius:4px; font-size:0.65rem; cursor:pointer; font-family:var(--font-main); transition:all 0.15s; z-index:2; }
+        .rt-code-copy:hover { color:var(--gold-primary); border-color:var(--gold-primary); }
+        .rt-code { font-family:var(--font-mono); font-size:0.73rem; line-height:1.8; color:var(--text-secondary); white-space:pre-wrap; word-break:break-word; margin:0; }
+
+        /* Test Button */
+        .rt-actions { padding:12px 16px; border-top:1px solid var(--border-subtle); background:var(--bg-card); flex-shrink:0; }
+        .rt-test-btn { width:100%; padding:10px; border-radius:8px; font-size:0.82rem; font-weight:800; border:none; cursor:pointer; font-family:var(--font-main); background:var(--gold-gradient); color:#000; transition:all 0.15s; letter-spacing:0.5px; }
+        .rt-test-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 20px rgba(255,179,0,0.2); }
+        .rt-test-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+        /* Results */
+        #rt-result { max-height:200px; overflow-y:auto; flex-shrink:0; border-top:1px solid var(--border-subtle); }
+        .try-meta { display:flex; align-items:center; gap:6px; padding:6px 12px; background:var(--bg-card); flex-wrap:wrap; }
+        .try-tag { padding:3px 8px; border-radius:4px; font-family:var(--font-mono); font-size:0.62rem; font-weight:700; }
+        .try-tag.ok { background:rgba(0,230,118,0.1); color:var(--accent-green); }
+        .try-tag.err { background:rgba(255,82,82,0.1); color:var(--accent-red); }
+        .try-tag.info { background:rgba(68,138,255,0.1); color:var(--accent-blue); }
+        .try-copy { margin-left:auto; padding:3px 10px; border-radius:4px; font-size:0.62rem; font-weight:600; border:1px solid var(--border-subtle); background:none; color:var(--text-muted); cursor:pointer; font-family:var(--font-main); transition:all 0.15s; }
+        .try-copy:hover { color:var(--gold-primary); border-color:var(--gold-primary); }
+        .try-body { padding:8px 12px; font-family:var(--font-mono); font-size:0.65rem; line-height:1.5; color:var(--text-secondary); white-space:pre-wrap; word-break:break-word; max-height:130px; overflow-y:auto; margin:0; }
+
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--accent-green); color:#000; padding:10px 24px; border-radius:20px; font-weight:700; font-size:0.8rem; z-index:9999; display:none; }
+
+        @media (max-width:1100px) { .docs-right { width:340px; } }
+        @media (max-width:900px) { .docs-sidebar { width:200px; } .docs-right { display:none; } }
+        @media (max-width:600px) { .docs-sidebar { display:none; } }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <a href="./" class="topbar-logo"><div class="icon">🦅</div><span>HORUS <span class="muted">FLOW</span></span></a>
+        <div class="topbar-sep"></div>
+        <div class="topbar-nav">
+            <a href="./">Home</a>
+            <a href="/dash/" target="_blank" rel="noopener noreferrer">Dashboard</a>
+            <a href="#" class="active">API Docs</a>
+            <a href="./account.html">Console</a>
+            <a href="https://github.com/horustechltd/horus-flow-mcp" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence" target="_blank" rel="noopener noreferrer">RapidAPI</a>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-user-info" id="topbar-user"></span>
+        <a href="./register.html" class="topbar-cta" id="topbar-cta">Get API Key</a>
+    </div>
+</div>
+
+<div class="docs-layout">
+    <div class="docs-sidebar">
+        <div class="sb-search"><input type="text" placeholder="Search endpoints..." id="ep-search" oninput="filterEndpoints()"></div>
+        <div id="sidebar-list"></div>
+    </div>
+    <div class="docs-center" id="docs-center"></div>
+    <div class="docs-right" id="right-content"></div>
+</div>
+
+<div class="toast" id="toast">✓ Copied!</div>
+<script>document.write('<scr'+'ipt src="./js/docs.js?v=' + Date.now() + '"><\/scr'+'ipt>');</script>
+</body>
+</html>

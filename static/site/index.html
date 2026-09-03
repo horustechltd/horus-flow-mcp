@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horus Flow — Institutional Orderflow Analytics</title>
+    <meta name="description" content="See what the market hides. Institutional-grade orderflow intelligence detecting whale movements, spoofing, and liquidity events before price reacts. Real-time Level 3 market data for crypto & equity. Built for AI agents.">
+    <meta name="keywords" content="orderflow, market microstructure, whale detection, liquidation heatmap, AI trading, crypto API, equity flow, MCP server, institutional trading, algorithmic trading, Horus Flow">
+    <meta name="author" content="Horus Tech Ltd">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://flow.horustek.pro/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://flow.horustek.pro/">
+    <meta property="og:title" content="Horus Flow Intelligence — Institutional Orderflow for AI Agents">
+    <meta property="og:description" content="Real-time orderflow intelligence detecting whale movements, spoofing patterns, and liquidity events before price reacts. API-first, built for AI trading agents.">
+    <meta property="og:site_name" content="Horus Flow Intelligence">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="https://flow.horustek.pro/img/og-image-v2.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Horus Flow Intelligence — See What The Market Hides">
+    <meta name="twitter:description" content="Institutional-grade orderflow analytics. Whale detection, liquidation heatmaps, cross-exchange flow analysis. API for AI trading agents.">
+    <meta name="twitter:site" content="@HorusTechLtd">
+    <meta name="twitter:image" content="https://flow.horustek.pro/img/og-image-v2.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Horus Flow Intelligence",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "url": "https://flow.horustek.pro",
+        "description": "Institutional-grade orderflow intelligence platform providing real-time whale detection, liquidity analysis, and market microstructure data via REST API and MCP protocol.",
+        "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "0",
+            "highPrice": "999",
+            "offerCount": "4"
+        },
+        "provider": {
+            "@type": "Organization",
+            "name": "Horus Tech Ltd",
+            "url": "https://horustek.pro",
+            "sameAs": [
+                "https://github.com/horustechltd",
+                "https://rapidapi.com/HORUS-TECH-LTD-default/api/horus-flow-intelligence"
+            ]
+        }
+    }
+    </script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- Brand CSS -->
+    <link rel="stylesheet" href="./css/brand.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="./img/og-image-v2.png">
+    <link rel="apple-touch-icon" href="./img/og-image-v2.png">
+</head>
+<body>
+
+    <!-- ============ NAVIGATION ============ -->
+    <nav class="site-nav" id="main-nav">
+        <div class="nav-logo">
+            <div class="logo-icon">🦅</div>
+            <span>HORUS <span style="font-weight:400; color: var(--text-muted);">FLOW</span></span>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="#features" class="active">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="/api/docs" target="_blank" rel="noopener noreferrer">API Docs</a></li>
+            <li><a href="https://github.com/horustechltd/horus-flow-mcp" target="_blank" rel="noopener noreferrer" title="GitHub MCP Server">GitHub ↗</a></li>
+            <li><a href="https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence" target="_blank" rel="noopener noreferrer" title="RapidAPI Profile">RapidAPI ↗</a></li>
+        </ul>
+        
+        <div class="nav-cta">
+            <a href="./login.html" class="btn btn-ghost font-mono" style="font-size:0.8rem;">Login</a>
+            <a href="./register.html" class="btn btn-primary" style="font-size:0.85rem;">Get API Key</a>
+        </div>
+
+        <div class="nav-hamburger" onclick="document.getElementById('mobile-nav').classList.add('active')">
+            <span></span><span></span><span></span>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="mobile-nav-overlay" id="mobile-nav">
+        <button class="mobile-nav-close" onclick="this.parentElement.classList.remove('active')">✕</button>
+        <a href="#features" onclick="this.parentElement.classList.remove('active')">Features</a>
+        <a href="#how-it-works" onclick="this.parentElement.classList.remove('active')">How It Works</a>
+        <a href="#pricing" onclick="this.parentElement.classList.remove('active')">Pricing</a>
+        <a href="/api/docs" target="_blank" rel="noopener noreferrer">API Docs</a>
+        <a href="https://github.com/horustechltd/horus-flow-mcp" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        <a href="./login.html">Login</a>
+        <a href="./register.html" style="color:var(--gold-primary);">Get API Key →</a>
+    </div>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="hero">
+        <div class="hero-badge">
+            <span class="pulse-dot"></span>
+            LIVE INTELLIGENCE ENGINE
+        </div>
+
+        <h1>
+            See What The Market <span class="gradient-text">Hides</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Institutional-grade orderflow intelligence that detects whale movements, spoofing traps, and liquidity events <strong style="color: var(--text-primary);">before price reacts</strong>. Built for AI trading agents.
+        </p>
+
+        <div class="hero-actions">
+            <a href="./register.html" class="btn btn-primary btn-lg">Start Free — 100 Calls/Day</a>
+            <a href="#how-it-works" class="btn btn-secondary btn-lg">See Live Proof ↓</a>
+        </div>
+
+        <!-- Live Stats -->
+        <div class="hero-stats animate-in">
+            <div class="hero-stat">
+                <div class="stat-value" id="stat-signals">—</div>
+                <div class="stat-label">Signals Today</div>
+            </div>
+            <div class="hero-stat">
+                <div class="stat-value" id="stat-accuracy">63%</div>
+                <div class="stat-label">Directional Accuracy</div>
+            </div>
+            <div class="hero-stat">
+                <div class="stat-value" id="stat-latency">&lt;1s</div>
+                <div class="stat-label">Signal Latency</div>
+            </div>
+            <div class="hero-stat">
+                <div class="stat-value">7</div>
+                <div class="stat-label">Intelligence Layers</div>
+            </div>
+        </div>
+
+        <!-- Live Ticker -->
+        <div class="live-ticker animate-in" id="live-ticker">
+            <span class="pulse-dot"></span>
+            <span style="color: var(--text-muted);">BTC:</span>
+            <span class="ticker-signal" id="ticker-signal">Loading...</span>
+            <span style="color: var(--text-muted);">|</span>
+            <span style="color: var(--text-muted);">Confidence:</span>
+            <span class="font-mono" id="ticker-conf" style="color: var(--gold-primary);">—</span>
+        </div>
+    </section>
+
+    <!-- ============ THE PROBLEM ============ -->
+    <section class="section" id="problem">
+        <div class="container text-center">
+            <span class="section-label">The Problem</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                You're Trading <span class="gradient-text">Blind</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                Candlestick charts show you <strong>history</strong>. RSI tells you what <em>already</em> happened. 
+                By the time your indicator triggers, institutions have already moved.
+            </p>
+
+            <div class="grid-3 animate-in">
+                <div class="card" style="border-color: var(--accent-red); border-opacity: 0.3;">
+                    <div class="card-icon" style="background: rgba(255, 82, 82, 0.1);">❌</div>
+                    <div class="card-title">RSI Says "Buy"</div>
+                    <div class="card-desc">RSI drops below 30. Every course says "oversold = buy." You enter. Price drops another 8%. It was a trap.</div>
+                </div>
+                <div class="card" style="border-color: var(--accent-red); border-opacity: 0.3;">
+                    <div class="card-icon" style="background: rgba(255, 82, 82, 0.1);">❌</div>
+                    <div class="card-title">Support "Holds"</div>
+                    <div class="card-desc">A huge buy wall at $77,500 makes you feel safe. It's a spoof — the wall gets pulled the moment you enter long.</div>
+                </div>
+                <div class="card" style="border-color: var(--accent-green); border-opacity: 0.3;">
+                    <div class="card-icon" style="background: rgba(0, 230, 118, 0.1);">🦅</div>
+                    <div class="card-title">Horus Saw It Coming</div>
+                    <div class="card-desc">Horus detected INSTITUTIONAL_DISTRIBUTION 85 minutes before the drop. BID_WALL_TRAP at 5.8x. The "support" was fake.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ FEATURES ============ -->
+    <section class="section" id="features" style="background: var(--bg-secondary);">
+        <div class="container text-center">
+            <span class="section-label">Intelligence Layers</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                7 Layers of <span class="gradient-text">Market Physics</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                Each layer analyzes a different dimension of market microstructure. Together, they form the most complete picture of what's actually happening.
+            </p>
+
+            <div class="grid-3 animate-in">
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Orderflow Physics</div>
+                    <div class="card-desc">Sub-second L2 depth analysis. Buy/sell aggression ratio, delta acceleration, and spread dynamics — the gravity behind price.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🐋</div>
+                    <div class="card-title">Whale Detection</div>
+                    <div class="card-desc">Real-time tracking of orders &gt;$50K. Detects institutional accumulation, distribution, and exit patterns before they move price.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🎭</div>
+                    <div class="card-title">Spoofing Detection</div>
+                    <div class="card-desc">AI identifies fake walls and pulled orders. Know when the "support" is real liquidity vs. a manipulation trap.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🔥</div>
+                    <div class="card-title">Liquidation Heatmap</div>
+                    <div class="card-desc">Maps where leveraged positions will be force-liquidated. See the "gravity zones" that pull price toward them.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🔄</div>
+                    <div class="card-title">Cross-Exchange Flow</div>
+                    <div class="card-desc">Spot vs. Futures divergence across Binance, OKX, Bybit. Detects when speculation leads or when real money drives.</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🧠</div>
+                    <div class="card-title">Composite Intelligence</div>
+                    <div class="card-desc">All 7 layers fused into a single Verdict: BUY, SELL, or STAY_OUT. One number. One decision. Institutional conviction.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS — LIVE PROOF ============ -->
+    <section class="section" id="how-it-works">
+        <div class="container text-center">
+            <span class="section-label">Live Proof</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                See It <span class="gradient-text">In Action</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                This is a real API response from Horus Flow right now. Not a mockup — live data.
+            </p>
+
+            <div class="code-block animate-in" style="text-align: left; max-width: 700px; margin: 0 auto;">
+                <span class="code-lang">Live Response</span>
+<pre id="live-json" style="white-space: pre-wrap; word-break: break-word;">
+<span class="code-comment">// Fetching live data from Horus API...</span>
+</pre>
+            </div>
+
+            <div style="margin-top: var(--space-xl);">
+                <p class="section-subtitle" style="font-size: 0.95rem;">
+                    While your indicators show <span style="color: var(--text-primary); font-weight: 700;">RSI: 27 (Buy)</span>, Horus sees the institutional distribution happening <em>behind</em> the price. That's the edge.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ CODE EXAMPLE ============ -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container text-center">
+            <span class="section-label">Integration</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                3 Lines of <span class="gradient-text">Code</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                REST API. JSON response. Sub-second latency. Works with any language, any bot, any agent.
+            </p>
+
+            <div class="grid-2 animate-in" style="max-width: 900px; margin: 0 auto;">
+                <div class="code-block" style="text-align: left;">
+                    <span class="code-lang">Python</span>
+<pre><span class="code-keyword">import</span> requests
+
+r = requests.<span class="code-func">get</span>(<span class="code-string">"https://api.horusflow.io/v1/flow/crypto/BTCUSDT"</span>,
+    headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-key"</span>})
+
+signal = r.json()
+<span class="code-keyword">print</span>(signal[<span class="code-string">"signal"</span>])     <span class="code-comment"># WHALE_EXIT</span>
+<span class="code-keyword">print</span>(signal[<span class="code-string">"confidence"</span>]) <span class="code-comment"># 0.92</span></pre>
+                </div>
+
+                <div class="code-block" style="text-align: left;">
+                    <span class="code-lang">JavaScript</span>
+<pre><span class="code-keyword">const</span> res = <span class="code-keyword">await</span> <span class="code-func">fetch</span>(
+  <span class="code-string">"https://api.horusflow.io/v1/flow/crypto/BTCUSDT"</span>,
+  { headers: { <span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-key"</span> }}
+);
+
+<span class="code-keyword">const</span> data = <span class="code-keyword">await</span> res.<span class="code-func">json</span>();
+console.<span class="code-func">log</span>(data.<span class="code-gold">signal</span>);     <span class="code-comment">// WHALE_EXIT</span>
+console.<span class="code-func">log</span>(data.<span class="code-gold">confidence</span>); <span class="code-comment">// 0.92</span></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ CASE STUDY ============ -->
+    <section class="section" id="case-study">
+        <div class="container text-center">
+            <span class="section-label">Real-World Result</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                $33K Institutional Dump — <span class="gradient-text">Detected 85 Minutes Early</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                April 27, 2026. RSI said "Buy". Support was "holding". Every indicator was wrong. Horus was right.
+            </p>
+
+            <div class="grid-2 animate-in" style="max-width: 900px; margin: 0 auto; text-align: left;">
+                <div class="card" style="border-color: rgba(255, 82, 82, 0.3);">
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-red); letter-spacing: 2px; margin-bottom: var(--space-md);">TRADITIONAL ANALYSIS</div>
+                    <div style="margin-bottom: var(--space-sm); color: var(--text-secondary);">RSI (14): <span style="color: var(--text-primary); font-weight: 700;">27 — Oversold</span></div>
+                    <div style="margin-bottom: var(--space-sm); color: var(--text-secondary);">Support: <span style="color: var(--text-primary); font-weight: 700;">$77,500 — Holding</span></div>
+                    <div style="margin-bottom: var(--space-md); color: var(--text-secondary);">Volume: <span style="color: var(--text-primary); font-weight: 700;">Below average</span></div>
+                    <div style="padding: 12px; background: rgba(255, 82, 82, 0.1); border-radius: var(--radius-sm); font-weight: 700; color: var(--accent-red);">
+                        Verdict: "Buy the dip" ❌
+                    </div>
+                </div>
+
+                <div class="card" style="border-color: rgba(0, 230, 118, 0.3);">
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-green); letter-spacing: 2px; margin-bottom: var(--space-md);">HORUS FLOW INTELLIGENCE</div>
+                    <div style="margin-bottom: var(--space-sm); color: var(--text-secondary);">Whale Intent: <span style="color: var(--accent-red); font-weight: 700;">SHORT</span></div>
+                    <div style="margin-bottom: var(--space-sm); color: var(--text-secondary);">BID_WALL_TRAP: <span style="color: var(--gold-primary); font-weight: 700;">5.8x — Spoofed</span></div>
+                    <div style="margin-bottom: var(--space-md); color: var(--text-secondary);">Delta 30s: <span style="color: var(--accent-red); font-weight: 700;">-$33,023</span></div>
+                    <div style="padding: 12px; background: rgba(0, 230, 118, 0.1); border-radius: var(--radius-sm); font-weight: 700; color: var(--accent-green);">
+                        Verdict: "STAY OUT — Institutional Distribution" ✅
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ PRICING ============ -->
+    <section class="section" id="pricing" style="background: var(--bg-secondary);">
+        <div class="container text-center">
+            <span class="section-label">Pricing</span>
+            <h2 style="margin-bottom: var(--space-lg);">
+                Choose Your <span class="gradient-text">Edge</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-2xl);">
+                One signal can save you thousands. Pick the plan that matches your trading volume.
+            </p>
+
+            <div class="pricing-grid animate-in">
+                <!-- Explorer (Free) -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Explorer</div>
+                    <div class="pricing-price"><span class="currency">$</span>0</div>
+                    <div class="pricing-period">forever free</div>
+                    <ul class="pricing-features">
+                        <li>100 API calls / day</li>
+                        <li>3 crypto symbols</li>
+                        <li>Basic flow signals</li>
+                        <li class="disabled">Level 3 Intelligence</li>
+                        <li class="disabled">🧠 Level 4 Horus Cortex Brain</li>
+                        <li class="disabled">Liquidation Heatmap</li>
+                    </ul>
+                    <a href="./register.html" class="btn btn-secondary" style="width: 100%;">Get Free Key</a>
+                </div>
+
+                <!-- Trader -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Trader</div>
+                    <div class="pricing-price"><span class="currency">$</span>49</div>
+                    <div class="pricing-period">per month</div>
+                    <ul class="pricing-features">
+                        <li>1,000 API calls / day</li>
+                        <li>All crypto symbols</li>
+                        <li>Real-time signals</li>
+                        <li>Whale detection</li>
+                        <li class="disabled">Level 3 Intelligence</li>
+                        <li class="disabled">🧠 Level 4 Horus Cortex Brain</li>
+                    </ul>
+                    <a href="javascript:void(0)" onclick="handleCheckout('trader')" class="btn btn-secondary" style="width: 100%;">Subscribe</a>
+                </div>
+
+                <!-- Professional (Featured) -->
+                <div class="pricing-card featured">
+                    <div class="pricing-plan">Professional</div>
+                    <div class="pricing-price"><span class="currency">$</span>149</div>
+                    <div class="pricing-period">per month</div>
+                    <ul class="pricing-features">
+                        <li>5,000 API calls / day</li>
+                        <li>All crypto + equity</li>
+                        <li><strong style="color: var(--gold-primary);">🧠 Level 4 Horus Cortex Brain</strong></li>
+                        <li>Level 3 Intelligence</li>
+                        <li>Liquidation Heatmap</li>
+                        <li>Autonomous Bot Action Policies</li>
+                    </ul>
+                    <a href="javascript:void(0)" onclick="handleCheckout('pro')" class="btn btn-primary" style="width: 100%;">Get Started</a>
+                </div>
+
+                <!-- Institutional -->
+                <div class="pricing-card">
+                    <div class="pricing-plan">Institutional</div>
+                    <div class="pricing-price"><span class="currency">$</span>499</div>
+                    <div class="pricing-period">per month</div>
+                    <ul class="pricing-features">
+                        <li>Unlimited API calls</li>
+                        <li><strong style="color: var(--gold-primary);">🧠 Full Cortex + Dedicated MCP</strong></li>
+                        <li>Priority infrastructure</li>
+                        <li>Custom symbol coverage</li>
+                        <li>Dedicated support</li>
+                        <li>SLA guarantee</li>
+                    </ul>
+                    <a href="#" class="btn btn-secondary" style="width: 100%;" onclick="handleCheckout('institutional')">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ TRUST SIGNALS ============ -->
+    <section class="section">
+        <div class="container text-center">
+            <div class="grid-4 animate-in" style="max-width: 800px; margin: 0 auto;">
+                <div class="hero-stat">
+                    <div class="stat-value" style="font-size: 1.4rem;">🏢</div>
+                    <div class="stat-label">UK Registered</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="stat-value" style="font-size: 1.4rem;">💳</div>
+                    <div class="stat-label">Stripe Secured</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="stat-value" style="font-size: 1.4rem;">⭐</div>
+                    <div class="stat-label">Glama A-Tier</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="stat-value" style="font-size: 1.4rem;">🔓</div>
+                    <div class="stat-label">MCP Certified</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ CTA ============ -->
+    <section class="section" style="background: var(--bg-secondary);">
+        <div class="container text-center">
+            <h2 style="margin-bottom: var(--space-md);">
+                Stop Trading <span class="gradient-text">Blind</span>
+            </h2>
+            <p class="section-subtitle" style="margin-bottom: var(--space-xl);">
+                Get your API key in 30 seconds. Start seeing what the market hides.
+            </p>
+            <a href="./register.html" class="btn btn-primary btn-lg">Get API Key — Free</a>
+        </div>
+    </section>
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">🦅 HORUS <span style="font-weight:400; color: var(--text-muted);">FLOW</span></div>
+                    <p class="footer-desc">Institutional-grade orderflow intelligence for AI trading agents. Real-time whale detection, liquidity analysis, and market microstructure data.</p>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:8px; line-height:1.6;">Horus Tech Ltd<br>&#99;&#111;&#110;&#116;&#97;&#99;&#116;&#64;&#104;&#111;&#114;&#117;&#115;&#116;&#101;&#107;&#46;&#112;&#114;&#111;</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="/api/docs" target="_blank" rel="noopener noreferrer">API Documentation</a></li>
+                        <li><a href="/dash/" target="_blank" rel="noopener noreferrer">Live Dashboard</a></li>
+                        <li><a href="./register.html">Get API Key</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="https://horustek.pro" target="_blank" rel="noopener noreferrer">Horus Tech Ltd</a></li>
+                        <li><a href="https://github.com/horustechltd" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        <li><a href="https://rapidapi.com/HORUS-TECH-LTD-default/api/horus-flow-intelligence" target="_blank" rel="noopener noreferrer">RapidAPI Marketplace</a></li>
+                        <li><a href="./terms.html">Terms of Service</a></li>
+                        <li><a href="./privacy.html">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#case-study">Case Study</a></li>
+                        <li><a href="https://github.com/horustechltd/horus-flow-mcp" target="_blank" rel="noopener noreferrer">MCP Server (Open Source)</a></li>
+                        <li><a href="/health" target="_blank" rel="noopener noreferrer">System Status</a></li>
+                        <li><a href="mailto:&#115;&#117;&#112;&#112;&#111;&#114;&#116;&#64;&#104;&#111;&#114;&#117;&#115;&#116;&#101;&#107;&#46;&#112;&#114;&#111;">Support</a></li>
+                        <li><a href="mailto:&#115;&#97;&#108;&#101;&#115;&#64;&#104;&#111;&#114;&#117;&#115;&#116;&#101;&#107;&#46;&#112;&#114;&#111;">Enterprise Sales</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2026 Horus Tech Ltd. All rights reserved.</span>
+                <span class="font-mono" style="color: var(--gold-primary); font-size: 0.75rem;">v2.0.0 — Level 3 Intelligence</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============ JAVASCRIPT ============ -->
+    <script src="./js/landing.js" defer></script>
+
+</body>
+</html>
+<!-- Checkout Script -->
+<script>
+async function handleCheckout(tier) {
+    if (tier === 'institutional') {
+        window.location.href = 'mailto:&#115;&#97;&#108;&#101;&#115;&#64;&#104;&#111;&#114;&#117;&#115;&#116;&#101;&#107;&#46;&#112;&#114;&#111;?subject=Institutional Tier Inquiry';
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+    
+    try {
+        const checkoutRes = await fetch('/api/billing/create-checkout-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({tier: tier})
+        });
+        
+        const checkoutData = await checkoutRes.json();
+        
+        if (checkoutRes.ok && checkoutData.checkout_url) {
+            window.location.href = checkoutData.checkout_url;
+        } else if (checkoutRes.status === 401) {
+            // Not logged in - redirect to login then come back
+            window.location.href = './login.html?next=' + encodeURIComponent('/#pricing');
+        } else {
+            alert(checkoutData.detail || 'Error creating checkout session.');
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Connection error: ' + err.message);
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+</script>

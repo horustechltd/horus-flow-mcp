@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horus Intel</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css?v=14">
+    <!-- TradingView Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <!-- Auth Check -->
+    <script>
+        fetch('/api/auth/me', {credentials: 'include'})
+            .then(async (r) => {
+                if (!r.ok) { window.location.href = '/site/login.html'; return; }
+                const data = await r.json();
+                const key = data.api_keys.length > 0 ? data.api_keys[0].key : '';
+                if (key) {
+                    const keyInput = document.getElementById('rapid-key');
+                    if (keyInput) {
+                        keyInput.value = key;
+                        keyInput.style.display = 'none';
+                    }
+                }
+            })
+            .catch(() => { window.location.href = '/site/login.html'; });
+    </script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="navbar">
+        <div class="nav-left">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#ffb300"/>
+                </svg>
+            </div>
+            <div class="nav-brand font-mono">
+                <span class="brand-name">HORUS <span style="font-weight:400; color:#a0a0b0;">FLOW</span></span>
+            </div>
+        </div>
+        
+        <div class="nav-center">
+            <span class="live-dot pulse"></span> <span class="font-mono text-gold" style="font-size:0.75rem; letter-spacing:1px; font-weight:800;">FLOW INTELLIGENCE MCP</span>
+        </div>
+
+        <div class="nav-right">
+            <a href="captains.html" style="color: #ffb300; text-decoration: none; font-size: 0.85rem; border: 1px solid rgba(255,179,0,0.5); padding: 8px 16px; border-radius: 6px; font-weight: 800; background: rgba(255, 179, 0, 0.1); transition: all 0.3s;" class="font-mono pulse">COMMANDER'S HUB</a>
+
+            <input type="password" id="rapid-key" placeholder="API Key" class="key-input font-mono" style="display: none;">
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <!-- THE EDGE EXPLAINER -->
+        <div class="edge-explainer font-mono">
+            <div style="background: rgba(255, 179, 0, 0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(255, 179, 0, 0.3); display: flex; align-items: center; justify-content: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#ffb300"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-gold" style="font-weight:900; font-size:1.1rem; margin-bottom:4px; letter-spacing: 1px;">THE HORUS EDGE</div>
+                <div style="color:#a0a0b0; font-size:0.85rem; line-height:1.6; font-family: var(--font-main);">
+                    Candlestick charts show you <b>history</b>. Horus measures L2 orderbook physics (Whales, Aggression, Spread) to <b style="color: #fff;">predict the next movement</b> before the candle is even formed. You are seeing the gravity <i>behind</i> the price.
+                </div>
+            </div>
+        </div>
+
+        <!-- INTELLIGENCE ROW -->
+        <div class="intel-grid">
+            
+            <!-- 1. Wiseman Climate -->
+            <div class="w-card">
+                <div class="w-header">
+                    <div class="w-title font-mono"><span class="icon pink">🧠</span> WISEMAN CLIMATE</div>
+                    <div class="w-badge badge-green" id="gw-health-badge">HEALTHY</div>
+                </div>
+                <div class="w-body">
+                    <h1 id="gw-mode" class="huge-text text-gold">RANGE</h1>
+                    <p id="gw-rec" class="sub-text text-dim">RANGE PLAYS — Mean-reversion strategies favored</p>
+                    
+                    <div class="w-metrics">
+                        <div class="w-metric">
+                            <div class="m-val text-gold" id="gw-conf">75%</div>
+                            <div class="m-lbl font-mono">CONFIDENCE</div>
+                        </div>
+                        <div class="w-metric">
+                            <div class="m-val text-white" id="gw-agg">0.5x</div>
+                            <div class="m-lbl font-mono">AGGRESSION</div>
+                        </div>
+                        <div class="w-metric">
+                            <div class="m-val text-green" id="gw-health">HEALTHY</div>
+                            <div class="m-lbl font-mono">HEALTH</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Ignition Scanner -->
+            <div class="w-card">
+                <div class="w-header">
+                    <div class="w-title font-mono"><span class="icon orange">🔥</span> IGNITION SCANNER</div>
+                    <div class="w-badge badge-gray" id="gi-regime-badge">DORMANT</div>
+                </div>
+                <div class="w-body">
+                    <h1 id="gi-regime" class="huge-text text-white">DORMANT</h1>
+                    <p class="sub-text text-dim" id="gi-sub">Scanning 270 assets | Bias: FADING</p>
+                    
+                    <div class="w-metrics">
+                        <div class="w-metric">
+                            <div class="m-val text-white" id="gi-score">0.128</div>
+                            <div class="m-lbl font-mono">GLOBAL SCORE</div>
+                        </div>
+                        <div class="w-metric">
+                            <div class="m-val text-white" id="gi-hot">1.8%</div>
+                            <div class="m-lbl font-mono">> 0.6 HOT</div>
+                        </div>
+                        <div class="w-metric">
+                            <div class="m-val text-white" id="gi-tracked">270</div>
+                            <div class="m-lbl font-mono">TRACKED</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. The Incubator (Court) -->
+            <div class="w-card" style="display: flex; flex-direction: column;">
+                <div class="w-header">
+                    <div class="w-title font-mono"><span class="icon" style="color: var(--gold);">⚖️</span> THE INCUBATOR</div>
+                    <div class="w-badge badge-gray" id="gc-ready-badge">0 READY</div>
+                </div>
+                <div class="w-body" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: baseline; gap: 10px;">
+                        <h1 id="gc-total" class="huge-text text-white">0</h1>
+                        <span class="font-mono text-dim" style="font-size: 0.8rem; font-weight: 800;">IN COURT</span>
+                    </div>
+                    <p class="sub-text text-dim" id="gc-sub" style="margin-bottom: 12px; font-size: 0.75rem;">Waiting for EdgeBridge entry...</p>
+                    
+                    <!-- Scrollable list of assets -->
+                    <div class="inc-list-container" style="flex-grow: 1; overflow-y: auto; max-height: 90px; padding-right: 5px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                        <div id="inc-list" style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- JS will inject .inc-item here -->
+                            <div class="text-dim font-mono" style="font-size: 0.75rem; text-align: center; padding-top: 10px;">Awaiting Candidates...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ACTION BAR (Now inside Intelligence Hub) -->
+        <div class="action-bar-wrapper">
+            <div class="action-bar">
+                <input type="text" id="track-input" placeholder="e.g. BTCUSDT or NVDA" class="track-input font-mono">
+                <select id="track-type" class="track-select font-mono">
+                    <option value="crypto">Crypto ∨</option>
+                    <option value="equity">Equity ∨</option>
+                </select>
+                <button class="btn-track font-mono" id="btn-track">+ TRACK</button>
+            </div>
+        </div>
+
+        <!-- TRACKING GRID -->
+        <div class="track-grid" id="track-grid">
+            <!-- Dynamic Orderflow Cards injected here -->
+        </div>
+
+    </main>
+
+    <footer class="site-footer font-mono">
+        <div class="footer-inner">
+            <div class="footer-left">
+                <span class="text-gold" style="font-weight:800;">⟐ HORUS FLOW</span>
+                <span class="text-dim">Institutional-Grade Market Intelligence</span>
+            </div>
+            <div class="footer-center text-dim">
+                Powered by <span class="text-gold">HorusTek AI</span> · Volatility Breakout Engine · Wiseman Climate · EdgeBridge
+            </div>
+            <div class="footer-right text-dim">
+                © 2026 HorusTek · v3.0
+            </div>
+        </div>
+    </footer>
+
+    <!-- Templates -->
+    <template id="card-template">
+        <div class="flow-card">
+            <div class="fc-header">
+                <div class="fc-title font-mono">LIVE ORDERFLOW</div>
+                <div class="fc-badge font-mono badge-gold" data-id="tag-type">CRYPTO</div>
+            </div>
+            
+            <div class="fc-wiseman font-mono">
+                <span class="icon pink" style="margin-right:4px;">🧠</span> WISEMAN
+                <span data-id="card-climate" style="margin-left:auto; color:var(--text-dim); font-size:0.65rem; font-weight:700;">--- | --- | ---</span>
+            </div>
+
+            <h2 data-id="card-symbol" class="font-mono text-white" style="font-size:1.4rem; font-weight:900; margin:0.2rem 0 0.4rem 0;">---</h2>
+
+            <div class="tv-container">
+                <div class="tv-symbol-overlay font-mono" data-id="tv-label">---</div>
+                <div data-id="tv_chart"></div>
+            </div>
+
+            <!-- Status overlay for offline feeds -->
+            <div data-id="card-status" class="card-status-overlay hidden font-mono">
+                <span>⚠️ MARKET CLOSED — No live feed available</span>
+            </div>
+
+            <div class="fc-metrics-grid">
+                <!-- Row 1 -->
+                <div class="f-metric">
+                    <div class="f-lbl font-mono">SIGNAL</div>
+                    <div class="f-val text-dim" data-id="card-signal">---</div>
+                </div>
+                <div class="f-metric">
+                    <div class="f-lbl font-mono">CONFIDENCE</div>
+                    <div class="f-val text-dim" data-id="card-conf">---</div>
+                </div>
+                <div class="f-metric">
+                    <div class="f-lbl font-mono">EDGE PROOF</div>
+                    <div class="f-val text-dim" data-id="card-edge">---</div>
+                </div>
+                
+                <!-- Row 2 -->
+                <div class="f-metric">
+                    <div class="f-lbl font-mono">RISK</div>
+                    <div class="f-val text-dim" data-id="card-risk">---</div>
+                </div>
+                <!-- Spacer -->
+                <div class="f-metric"></div>
+                <div class="f-metric">
+                    <div class="f-lbl font-mono">MARKET STATE</div>
+                    <div class="f-val text-dim" data-id="card-state">---</div>
+                </div>
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="fc-footer-stats font-mono">
+                <div class="foot-stat">
+                    <span class="f-icon">🐋</span> <span class="f-slbl">WHALES</span>
+                    <div class="f-sval text-dim" data-id="card-whales">---</div>
+                </div>
+                <div class="foot-stat">
+                    <span class="f-icon">⚡</span> <span class="f-slbl">MOMENTUM</span>
+                    <div class="f-sval text-dim" data-id="card-mom">---</div>
+                </div>
+                <div class="foot-stat">
+                    <span class="f-icon">🧱</span> <span class="f-slbl">WALL</span>
+                    <div class="f-sval text-dim" data-id="card-wall">---</div>
+                </div>
+            </div>
+
+            <!-- Text Box -->
+            <div class="fc-textbox font-mono">
+                <div class="textbox-title text-dim" data-id="card-logs-title">⚡ ACTION LOGS</div>
+                <div class="textbox-content text-dim" data-id="card-logs">Connecting to Horus engine...</div>
+            </div>
+
+            <button class="btn-close" data-id="btn-close">×</button>
+        </div>
+    </template>
+
+    <script src="./js/app.js?v=13"></script>
+</body>
+</html>

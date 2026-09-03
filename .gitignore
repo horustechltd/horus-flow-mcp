@@ -1,3 +1,80 @@
-dist/
-*.egg-info/
+# Python bytecode & environments
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+mcp_env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Secrets & Environment Variables
+.env
+.env.*
+!.env.example
+
+# Databases & State
+*.db
+*.sqlite
+*.sqlite3
+horus.db
+horus_subscribers.db
+calibration_data/
+bayesian_memory.json
+captain_v*.json
+manus_theses.json
+endpoint_results.json
+
+# Logs & Audits
+logs/
+*.log
+*.csv
+court_audit_log.csv
+signal_truth_log.csv
+auditor.log
+
+# Temporary / Scratch & Test Scripts
+scratch_*.py
+test_cookie*.py
+test_alpaca.py
+test_api_stability.py
+test_endpoints.py
+test_macro.py
+optimize_*.py
+generate_md.py
+accuracy_tracker.py
+manus_*.py
+signal_truth_detector.py
+
+# IDE & Editor files
+.vscode/
+.kiro/
+HORUH/
+*.code-workspace
+.DS_Store
+
+# Temporary document exports
+*.pdf
+*.zip
+exports/
+horustek-website-temp/
+QVE_Conversation_Transcript.md
+live_api_results.md
+HORUS_TECHNICAL_EVALUATION.md
+replit_dashboard/
+public_mcp_additions/

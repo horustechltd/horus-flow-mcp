@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Console — Horus Flow Intelligence</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Manage your API keys, view usage, and configure your Horus Flow Intelligence developer account.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/brand.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🦅</text></svg>">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:var(--font-main); background:var(--bg-primary); color:var(--text-primary); min-height:100vh; }
+
+        .topbar { height:52px; background:var(--bg-card); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; padding:0 20px; position:sticky; top:0; z-index:100; }
+        .topbar-left { display:flex; align-items:center; gap:16px; }
+        .topbar-logo { display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text-primary); }
+        .topbar-logo .icon { width:30px; height:30px; background:var(--gold-gradient); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
+        .topbar-logo span { font-family:var(--font-mono); font-weight:900; font-size:0.9rem; letter-spacing:1px; }
+        .topbar-logo .muted { font-weight:400; color:var(--text-muted); }
+        .topbar-sep { width:1px; height:24px; background:var(--border-subtle); }
+        .topbar-nav { display:flex; gap:4px; }
+        .topbar-nav a { padding:6px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; color:var(--text-secondary); text-decoration:none; transition:all 0.15s; }
+        .topbar-nav a:hover { color:var(--text-primary); background:var(--bg-secondary); }
+        .topbar-nav a.active { color:var(--gold-primary); background:var(--gold-glow); }
+        .topbar-right { display:flex; align-items:center; gap:12px; }
+        .topbar-tier { padding:4px 12px; border-radius:20px; font-family:var(--font-mono); font-size:0.65rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; }
+        .t-free { background:rgba(144,144,160,0.12); color:var(--text-muted); }
+        .t-trader { background:rgba(68,138,255,0.12); color:var(--accent-blue); }
+        .t-pro { background:var(--gold-glow); color:var(--gold-primary); border:1px solid var(--border-gold); }
+        .t-institutional { background:rgba(179,136,255,0.12); color:var(--accent-purple); }
+        .topbar-user { font-size:0.78rem; color:var(--text-secondary); }
+        .topbar-btn { padding:5px 14px; border-radius:6px; font-size:0.75rem; font-weight:600; border:1px solid var(--border-subtle); background:transparent; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; font-family:var(--font-main); }
+        .topbar-btn:hover { border-color:var(--text-muted); color:var(--text-primary); }
+
+        /* Dashboard Grid */
+        .dash { max-width:900px; margin:0 auto; padding:32px 24px 60px; }
+        .dash-greeting { margin-bottom:28px; }
+        .dash-greeting h1 { font-size:1.5rem; font-weight:800; margin-bottom:4px; }
+        .dash-greeting p { color:var(--text-muted); font-size:0.85rem; }
+
+        .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+        .dash-card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:20px; transition:all 0.2s; }
+        .dash-card:hover { border-color:var(--border-gold); }
+        .dash-card.full { grid-column:1/-1; }
+        .dc-label { font-size:0.65rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+
+        /* API Key Card */
+        .key-display { background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:8px; padding:12px 16px; font-family:var(--font-mono); font-size:0.78rem; color:var(--gold-primary); word-break:break-all; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:space-between; }
+        .key-display:hover { background:var(--gold-glow); }
+        .key-actions { display:flex; gap:8px; margin-top:12px; }
+        .key-act-btn { padding:6px 16px; border-radius:6px; font-size:0.72rem; font-weight:600; border:1px solid var(--border-subtle); background:none; color:var(--text-secondary); cursor:pointer; font-family:var(--font-main); transition:all 0.15s; }
+        .key-act-btn:hover { border-color:var(--gold-primary); color:var(--gold-primary); }
+        .key-act-btn.primary { background:var(--gold-gradient); color:#000; border:none; }
+        .key-act-btn.primary:hover { opacity:0.9; }
+
+        /* Stats */
+        .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+        .stat-item { background:var(--bg-secondary); border-radius:8px; padding:12px; text-align:center; }
+        .stat-val { font-family:var(--font-mono); font-size:1.3rem; font-weight:900; color:var(--text-primary); }
+        .stat-label { font-size:0.6rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+        .stat-item.warn .stat-val { color:var(--accent-red); }
+        .usage-bar-wrap { margin-top:12px; }
+        .usage-bar-bg { height:6px; background:var(--bg-secondary); border-radius:3px; overflow:hidden; }
+        .usage-bar { height:100%; background:var(--gold-gradient); border-radius:3px; transition:width 0.5s ease; }
+        .usage-bar.danger { background:linear-gradient(135deg,#ff5252,#ff1744); }
+        .usage-label { display:flex; justify-content:space-between; margin-top:6px; font-size:0.65rem; color:var(--text-muted); }
+
+        /* Upgrade */
+        .upgrade-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+        .up-card { background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:10px; padding:16px; cursor:pointer; transition:all 0.2s; text-align:center; }
+        .up-card:hover { border-color:var(--gold-primary); transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,179,0,0.1); }
+        .up-card.pop { border-color:var(--gold-primary); background:var(--gold-glow); }
+        .up-card .name { font-family:var(--font-mono); font-size:0.6rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); }
+        .up-card.pop .name { color:var(--gold-primary); }
+        .up-card .price { font-size:1.4rem; font-weight:900; margin:6px 0 4px; }
+        .up-card .price small { font-size:0.6rem; font-weight:400; color:var(--text-muted); }
+        .up-card .feat { font-size:0.68rem; color:var(--text-secondary); }
+
+        /* Quick Links */
+        .quick-links { display:flex; gap:10px; }
+        .ql { flex:1; display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:8px; text-decoration:none; color:var(--text-secondary); transition:all 0.15s; }
+        .ql:hover { border-color:var(--gold-primary); color:var(--text-primary); }
+        .ql .ql-icon { font-size:1.2rem; }
+        .ql .ql-text { font-size:0.78rem; font-weight:600; }
+        .ql .ql-sub { font-size:0.65rem; color:var(--text-muted); }
+
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--accent-green); color:#000; padding:10px 24px; border-radius:20px; font-weight:700; font-size:0.8rem; z-index:9999; display:none; }
+
+        @media (max-width:768px) {
+            .topbar { flex-wrap:wrap; height:auto; padding:10px 14px; gap:8px; }
+            .topbar-left { width:100%; }
+            .topbar-sep { display:none; }
+            .topbar-nav { gap:2px; }
+            .topbar-nav a { font-size:0.7rem; padding:4px 8px; }
+            .topbar-right { width:100%; justify-content:flex-end; }
+            .topbar-user { display:none; }
+            .dash { padding:20px 14px 40px; }
+            .dash-greeting h1 { font-size:1.2rem; }
+            .dash-grid { grid-template-columns:1fr; }
+            .stat-grid { grid-template-columns:repeat(2,1fr); }
+            .upgrade-grid { grid-template-columns:1fr; }
+            .quick-links { flex-direction:column; }
+            .key-display { font-size:0.68rem; }
+        }
+        @media (max-width:480px) {
+            .topbar-nav a { font-size:0.65rem; padding:3px 6px; }
+            .dash { padding:16px 10px 32px; }
+            .dash-card { padding:14px; }
+            .stat-val { font-size:1.1rem; }
+            .up-card .price { font-size:1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <a href="./" class="topbar-logo"><div class="icon">🦅</div><span>HORUS <span class="muted">FLOW</span></span></a>
+        <div class="topbar-sep"></div>
+        <div class="topbar-nav">
+            <a href="./">Home</a>
+            <a href="/dash/" target="_blank" rel="noopener noreferrer">Dashboard</a>
+            <a href="./docs.html">API Docs</a>
+            <a href="#" class="active">Console</a>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-tier t-free" id="topbar-tier">FREE</span>
+        <span class="topbar-user" id="topbar-user">—</span>
+        <button class="topbar-btn" onclick="handleLogout()">Logout</button>
+    </div>
+</div>
+
+<div class="dash">
+    <div class="dash-greeting">
+        <h1 id="greeting">Welcome back</h1>
+        <p>Manage your API access, usage, and subscription.</p>
+    </div>
+
+    <div class="dash-grid">
+        <!-- API Key -->
+        <div class="dash-card full">
+            <div class="dc-label">🔑 Your API Key</div>
+            <div class="key-display" id="key-display" onclick="copyKey()" title="Click to copy">Loading...</div>
+            <div class="key-actions">
+                <button class="key-act-btn primary" onclick="copyKey()">📋 Copy Key</button>
+                <a href="./docs.html" class="key-act-btn">📖 Open API Docs</a>
+            </div>
+        </div>
+
+        <!-- Usage Stats -->
+        <div class="dash-card full">
+            <div class="dc-label">📊 API Usage</div>
+            <div class="stat-grid">
+                <div class="stat-item"><div class="stat-val" id="s-today">0</div><div class="stat-label">Today</div></div>
+                <div class="stat-item"><div class="stat-val" id="s-month">0</div><div class="stat-label">This Month</div></div>
+                <div class="stat-item"><div class="stat-val" id="s-limit">100</div><div class="stat-label">Daily Limit</div></div>
+                <div class="stat-item"><div class="stat-val" id="s-since">—</div><div class="stat-label">Member Since</div></div>
+            </div>
+            <div class="usage-bar-wrap">
+                <div class="usage-bar-bg"><div class="usage-bar" id="usage-bar" style="width:0%"></div></div>
+                <div class="usage-label"><span id="usage-pct">0% used today</span><span id="usage-remain">100 remaining</span></div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="dash-card full">
+            <div class="dc-label">⚡ Quick Access</div>
+            <div class="quick-links">
+                <a href="./docs.html" class="ql">
+                    <span class="ql-icon">📖</span>
+                    <div><div class="ql-text">API Documentation</div><div class="ql-sub">Test endpoints, code snippets, examples</div></div>
+                </a>
+                <a href="/dash/" target="_blank" rel="noopener noreferrer" class="ql">
+                    <span class="ql-icon">📈</span>
+                    <div><div class="ql-text">Live Dashboard</div><div class="ql-sub">Real-time market intelligence</div></div>
+                </a>
+                <a href="./" class="ql">
+                    <span class="ql-icon">🏠</span>
+                    <div><div class="ql-text">Homepage</div><div class="ql-sub">Features, pricing, overview</div></div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Upgrade -->
+        <div class="dash-card full" id="upgrade-section">
+            <div class="dc-label">🚀 Upgrade Plan</div>
+            <div class="upgrade-grid">
+                <div class="up-card" onclick="doCheckout('trader')">
+                    <div class="name">Trader</div>
+                    <div class="price">$49<small>/mo</small></div>
+                    <div class="feat">1,000 calls/day · Equity access</div>
+                </div>
+                <div class="up-card pop" onclick="doCheckout('pro')">
+                    <div class="name">⚡ Professional</div>
+                    <div class="price">$149<small>/mo</small></div>
+                    <div class="feat">5,000 calls/day · 🧠 Level 4 Cortex Brain</div>
+                </div>
+                <div class="up-card" onclick="doCheckout('institutional')">
+                    <div class="name">Institutional</div>
+                    <div class="price">$999<small>/mo</small></div>
+                    <div class="feat">Unlimited · Dedicated support</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast">✓ Copied!</div>
+
+<script>
+    let userData = null;
+
+    async function loadAccount() {
+        try {
+            const res = await fetch('/api/auth/me?_=' + new Date().getTime(), { credentials: 'include', cache: 'no-store' });
+            if (!res.ok) { window.location.href = './login.html'; return; }
+            const data = await res.json();
+            userData = data;
+
+            document.getElementById('topbar-user').textContent = data.user.email;
+            document.getElementById('greeting').textContent = 'Welcome, ' + data.user.email.split('@')[0];
+
+            const tierEl = document.getElementById('topbar-tier');
+            tierEl.textContent = data.user.tier.toUpperCase();
+            tierEl.className = 'topbar-tier t-' + data.user.tier;
+
+            const key = data.api_keys.length > 0 ? data.api_keys[0] : null;
+            if (key) {
+                document.getElementById('key-display').textContent = key.key;
+                document.getElementById('s-limit').textContent = key.daily_limit.toLocaleString();
+
+                // Usage bar
+                const pct = Math.min((data.usage.today / key.daily_limit) * 100, 100);
+                const bar = document.getElementById('usage-bar');
+                bar.style.width = pct + '%';
+                if (pct > 80) bar.classList.add('danger');
+                document.getElementById('usage-pct').textContent = pct.toFixed(0) + '% used today';
+                document.getElementById('usage-remain').textContent = (key.daily_limit - data.usage.today) + ' remaining';
+            }
+
+            document.getElementById('s-today').textContent = data.usage.today.toLocaleString();
+            document.getElementById('s-month').textContent = data.usage.this_month.toLocaleString();
+
+            if (data.user.created_at) {
+                const d = new Date(data.user.created_at);
+                document.getElementById('s-since').textContent = d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+            }
+
+            if (['trader','pro','institutional'].includes(data.user.tier)) {
+                document.getElementById('upgrade-section').style.display = 'none';
+            }
+        } catch (err) {
+            window.location.href = './login.html';
+        }
+    }
+
+    function copyKey() {
+        const key = document.getElementById('key-display').textContent;
+        navigator.clipboard.writeText(key);
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 1200);
+    }
+
+    async function handleLogout() {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        setTimeout(() => { window.location.href = './login.html'; }, 150);
+    }
+
+    async function doCheckout(tier) {
+        if (tier === 'institutional') {
+            window.location.href = 'mailto:&#115;&#97;&#108;&#101;&#115;&#64;&#104;&#111;&#114;&#117;&#115;&#116;&#101;&#107;&#46;&#112;&#114;&#111;?subject=Institutional Tier Inquiry';
+            return;
+        }
+        const card = event.currentTarget;
+        card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+        try {
+            const res = await fetch('/api/billing/create-checkout-session', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                credentials: 'include', body: JSON.stringify({tier})
+            });
+            const data = await res.json();
+            if (res.ok && data.checkout_url) window.location.href = data.checkout_url;
+            else { alert(data.detail || 'Error'); card.style.opacity='1'; card.style.pointerEvents='auto'; }
+        } catch(e) { alert('Error: '+e.message); card.style.opacity='1'; card.style.pointerEvents='auto'; }
+    }
+
+    loadAccount();
+</script>
+</body>
+</html>

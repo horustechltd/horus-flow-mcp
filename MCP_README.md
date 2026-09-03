@@ -1,4 +1,3 @@
-[MCP_README.md](https://github.com/user-attachments/files/26669315/MCP_README.md)
 # 🦅 Horus Flow Intelligence — MCP Server
 
 [![smithery badge](https://smithery.ai/badge/horus-flow-mcp)](https://smithery.ai)
@@ -8,6 +7,16 @@
 An official [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that empowers AI coding assistants (like Claude Desktop, Cursor, and Cline) with **Institutional-Grade Crypto & Equity Orderflow Intelligence**.
 
 Rather than relying on lagging indicators (RSI, MACD), this MCP server gives your AI agents direct access to live Level 2 Orderbook imbalances and aggressive trade deltas (BUY vs SELL pressure) in milliseconds.
+
+## 🔮 The Edge: Candlesticks vs. Horus Prediction
+
+If your Agent is waiting for a candlestick to close to execute a trade, **it is reading history**. 
+Traditional indicators are purely mathematical derivatives of *past* price action. 
+
+**Horus Flow is predictive, not reactive.** 
+By measuring the sub-second physics of the orderbook—detecting limit order walls, tracking whale spoofing, and calculating momentum acceleration—Horus anticipates the directional movement **before** the candlestick is fully formed.
+
+When Horus triggers a `STRONG_BUY_PRESSURE` signal, it means institutional capital is aggressively absorbing liquidity *right now*. This allows your AI to execute entries seconds or minutes before the retail market reacts and the candlestick finally turns green. Stop letting your AI guess the next candle; let it measure the gravity that creates it.
 
 ## 🚀 Features Exposed to AI
 

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — Horus Flow Intelligence</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/brand.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🛡️</text></svg>">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:var(--font-main); background:var(--bg-primary); color:var(--text-primary); min-height:100vh; }
+
+        .topbar { height:52px; background:rgba(20,10,10,0.95); border-bottom:2px solid rgba(255,60,60,0.15); display:flex; align-items:center; justify-content:space-between; padding:0 20px; position:sticky; top:0; z-index:100; }
+        .topbar-left { display:flex; align-items:center; gap:16px; }
+        .topbar-logo { display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text-primary); }
+        .topbar-logo .icon { width:30px; height:30px; background:linear-gradient(135deg,#ff5252,#d32f2f); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
+        .topbar-logo span { font-family:var(--font-mono); font-weight:900; font-size:0.9rem; letter-spacing:1px; }
+        .topbar-logo .admin-badge { color:#ff5252; }
+        .topbar-right { display:flex; align-items:center; gap:12px; }
+        .topbar-user { font-size:0.78rem; color:var(--text-secondary); }
+        .topbar-btn { padding:5px 14px; border-radius:6px; font-size:0.75rem; font-weight:600; border:1px solid var(--border-subtle); background:transparent; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; font-family:var(--font-main); text-decoration:none; }
+        .topbar-btn:hover { border-color:var(--text-muted); color:var(--text-primary); }
+
+        .main { max-width:1100px; margin:0 auto; padding:28px 24px 60px; }
+
+        /* Stats Grid */
+        .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+        .stat-card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:18px; }
+        .stat-card .label { font-size:0.65rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+        .stat-card .value { font-family:var(--font-mono); font-size:1.6rem; font-weight:900; }
+        .stat-card .sub { font-size:0.7rem; color:var(--text-muted); margin-top:4px; }
+        .stat-card.gold .value { color:var(--gold-primary); }
+        .stat-card.green .value { color:var(--accent-green); }
+        .stat-card.blue .value { color:var(--accent-blue); }
+        .stat-card.purple .value { color:var(--accent-purple); }
+
+        /* Tabs */
+        .tabs { display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--border-subtle); padding-bottom:0; }
+        .tab { padding:10px 18px; font-size:0.8rem; font-weight:700; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:var(--font-main); }
+        .tab:hover { color:var(--text-primary); }
+        .tab.active { color:var(--gold-primary); border-bottom-color:var(--gold-primary); }
+
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+
+        /* Panel Card */
+        .panel { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:20px; margin-bottom:20px; }
+        .panel-title { font-size:0.7rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+
+        /* Search/Filter Bar */
+        .filter-bar { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+        .filter-input { padding:8px 14px; background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-primary); font-family:var(--font-main); font-size:0.8rem; outline:none; flex:1; min-width:200px; }
+        .filter-input:focus { border-color:var(--gold-primary); }
+        .filter-select { padding:8px 14px; background:var(--bg-secondary); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-primary); font-family:var(--font-main); font-size:0.8rem; outline:none; cursor:pointer; }
+        .filter-btn { padding:8px 18px; background:var(--gold-gradient); color:#000; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; cursor:pointer; font-family:var(--font-main); }
+        .filter-btn.secondary { background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border-subtle); }
+        .filter-btn.secondary:hover { border-color:var(--gold-primary); color:var(--gold-primary); }
+
+        /* Users Table */
+        .users-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+        .users-table th { text-align:left; padding:10px 12px; font-size:0.65rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border-subtle); }
+        .users-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; }
+        .users-table tr:hover td { background:rgba(255,255,255,0.02); }
+        .tier-badge { padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.6rem; font-weight:800; letter-spacing:1px; text-transform:uppercase; display:inline-block; }
+        .tier-badge.free { background:rgba(144,144,160,0.12); color:var(--text-muted); }
+        .tier-badge.trader { background:rgba(68,138,255,0.12); color:var(--accent-blue); }
+        .tier-badge.pro { background:var(--gold-glow); color:var(--gold-primary); }
+        .tier-badge.institutional { background:rgba(179,136,255,0.12); color:var(--accent-purple); }
+        .tier-badge.admin { background:rgba(255,82,82,0.12); color:var(--accent-red); }
+        .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+        .status-dot.active { background:var(--accent-green); }
+        .status-dot.inactive { background:var(--accent-red); }
+        .action-btn { padding:4px 10px; border-radius:4px; font-size:0.65rem; font-weight:600; border:1px solid var(--border-subtle); background:none; color:var(--text-secondary); cursor:pointer; font-family:var(--font-main); transition:all 0.15s; }
+        .action-btn:hover { border-color:var(--gold-primary); color:var(--gold-primary); }
+        .action-btn.danger:hover { border-color:var(--accent-red); color:var(--accent-red); }
+
+        /* Pagination */
+        .pagination { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; }
+        .page-btn { padding:6px 12px; border-radius:6px; font-size:0.75rem; font-weight:600; border:1px solid var(--border-subtle); background:none; color:var(--text-secondary); cursor:pointer; font-family:var(--font-main); }
+        .page-btn:hover { border-color:var(--gold-primary); color:var(--gold-primary); }
+        .page-btn.active { background:var(--gold-glow); color:var(--gold-primary); border-color:var(--gold-primary); }
+        .page-btn:disabled { opacity:0.3; cursor:not-allowed; }
+        .page-info { font-size:0.75rem; color:var(--text-muted); }
+
+        /* Lists */
+        .list-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .list-item:last-child { border-bottom:none; }
+        .list-item .li-label { font-size:0.82rem; color:var(--text-secondary); }
+        .list-item .li-value { font-family:var(--font-mono); font-size:0.82rem; font-weight:700; }
+
+        /* Audit */
+        .audit-entry { padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-size:0.78rem; }
+        .audit-entry .ae-time { font-family:var(--font-mono); font-size:0.65rem; color:var(--text-muted); }
+        .audit-entry .ae-action { color:var(--gold-primary); font-weight:600; }
+
+        /* Loading */
+        .loading { text-align:center; padding:40px; color:var(--text-muted); }
+
+        /* Modal */
+        .modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.7); z-index:500; align-items:center; justify-content:center; }
+        .modal-overlay.active { display:flex; }
+        .modal { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:28px; max-width:400px; width:90%; }
+        .modal h3 { margin-bottom:16px; font-size:1.1rem; }
+        .modal-actions { display:flex; gap:10px; margin-top:20px; }
+
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--accent-green); color:#000; padding:10px 24px; border-radius:20px; font-weight:700; font-size:0.8rem; z-index:9999; display:none; }
+
+        /* Denied */
+        .denied-page { min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; }
+        .denied-page h1 { color:var(--accent-red); margin-bottom:16px; }
+        .denied-page p { color:var(--text-muted); margin-bottom:24px; }
+
+        @media (max-width:768px) {
+            .stats-row { grid-template-columns:repeat(2,1fr); }
+            .filter-bar { flex-direction:column; }
+            .users-table { font-size:0.7rem; }
+            .users-table th, .users-table td { padding:6px 8px; }
+            .main { padding:16px 12px; }
+            .topbar { padding:0 12px; }
+        }
+        @media (max-width:480px) {
+            .stats-row { grid-template-columns:1fr; }
+            .tabs { overflow-x:auto; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Access Denied View (shown if not admin) -->
+<div id="denied-view" class="denied-page" style="display:none;">
+    <div>
+        <h1>🚫 Access Denied</h1>
+        <p>You don't have admin privileges.</p>
+        <a href="./account.html" class="btn btn-primary">Go to Console</a>
+    </div>
+</div>
+
+<!-- Admin Panel (shown if admin) -->
+<div id="admin-panel" style="display:none;">
+    <div class="topbar">
+        <div class="topbar-left">
+            <a href="./" class="topbar-logo"><div class="icon">🛡️</div><span>HORUS <span class="admin-badge">ADMIN</span></span></a>
+        </div>
+        <div class="topbar-right">
+            <span class="topbar-user" id="admin-email">—</span>
+            <a href="./account.html" class="topbar-btn">Console</a>
+            <button class="topbar-btn" onclick="handleLogout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main" id="main-dashboard">
+        <!-- Stats Row -->
+        <div class="stats-row" id="stats-row">
+            <div class="stat-card gold"><div class="label">Total Users</div><div class="value" id="s-users">—</div></div>
+            <div class="stat-card green"><div class="label">API Calls Today</div><div class="value" id="s-calls-today">—</div></div>
+            <div class="stat-card blue"><div class="label">Calls This Month</div><div class="value" id="s-calls-month">—</div></div>
+            <div class="stat-card purple"><div class="label">Avg Response</div><div class="value" id="s-response">—</div><div class="sub">milliseconds</div></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('users')">👥 Users</button>
+            <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
+            <button class="tab" onclick="switchTab('audit')">🔒 Audit Log</button>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-content active" id="tab-users">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>User Management</span>
+                    <button class="filter-btn secondary" onclick="exportCSV()">📥 Export CSV</button>
+                </div>
+                <div class="filter-bar">
+                    <input type="text" class="filter-input" id="search-input" placeholder="Search by email or name..." onkeyup="if(event.key==='Enter')loadUsers()">
+                    <select class="filter-select" id="tier-filter" onchange="loadUsers()">
+                        <option value="">All Tiers</option>
+                        <option value="free">Free</option>
+                        <option value="trader">Trader</option>
+                        <option value="pro">Pro</option>
+                        <option value="institutional">Institutional</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button class="filter-btn" onclick="loadUsers()">Search</button>
+                </div>
+                <div id="users-container"><div class="loading">Loading users...</div></div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div class="tab-content" id="tab-analytics">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="panel">
+                    <div class="panel-title">Tier Breakdown</div>
+                    <div id="tier-breakdown"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">Top Countries</div>
+                    <div id="countries-list"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">Top Endpoints (Today)</div>
+                    <div id="top-endpoints"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-title">Top Users (This Month)</div>
+                    <div id="top-users"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Tab -->
+        <div class="tab-content" id="tab-audit">
+            <div class="panel">
+                <div class="panel-title">Admin Actions Audit Log</div>
+                <div id="audit-container"><div class="loading">Loading audit log...</div></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Profile View -->
+    <div class="main" id="user-profile" style="display:none;">
+        <div style="margin-bottom:20px;">
+            <button class="filter-btn secondary" onclick="closeProfile()">← Back to Users</button>
+        </div>
+        
+        <!-- Profile Header -->
+        <div class="panel" style="position:relative;">
+            <div class="panel-title">User Profile</div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+                <div>
+                    <h2 style="font-size:1.8rem; margin-bottom:8px;" id="up-email">user@example.com</h2>
+                    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:12px;">
+                        <span id="up-name">Name</span> • ID: <span id="up-id" style="font-family:var(--font-mono);">#0</span> • Joined: <span id="up-joined"></span>
+                    </p>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span class="tier-badge" id="up-tier-badge">tier</span>
+                        <span class="tier-badge" id="up-country-badge" style="background:var(--bg-secondary); color:var(--text-primary);">EG</span>
+                        <span class="tier-badge" id="up-status-badge">Active</span>
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; border:1px solid var(--border-subtle);">
+                    <div>
+                        <label style="font-size:0.65rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">CHANGE TIER</label>
+                        <select class="filter-select" id="up-tier-select" style="min-width:120px;">
+                            <option value="free">Free</option>
+                            <option value="trader">Trader</option>
+                            <option value="pro">Pro</option>
+                            <option value="institutional">Institutional</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.65rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">STATUS</label>
+                        <select class="filter-select" id="up-status-select" style="min-width:100px;">
+                            <option value="1">Active</option>
+                            <option value="0">Disabled</option>
+                        </select>
+                    </div>
+                    <div style="padding-top:16px;">
+                        <button class="filter-btn" onclick="saveUserProfile()">Update</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-row" style="margin-top:24px; margin-bottom:0;">
+                <div class="stat-card green"><div class="label">Calls Today</div><div class="value" id="up-calls-today">0</div></div>
+                <div class="stat-card blue"><div class="label">Calls This Month</div><div class="value" id="up-calls-month">0</div></div>
+                <div class="stat-card purple"><div class="label">API Keys</div><div class="value" id="up-keys-count">0</div></div>
+            </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr; gap:20px;">
+            <div class="panel">
+                <div class="panel-title">API Keys</div>
+                <div id="up-keys-container"></div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-title">Recent Requests (Last 100)</div>
+                <div style="overflow-x:auto;">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Endpoint</th>
+                                <th>Response Time</th>
+                                <th>Client IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="up-logs-container">
+                            <!-- logs go here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+        <h3>✏️ Edit User</h3>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px;" id="modal-email"></p>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">TIER</label>
+            <select class="filter-select" id="modal-tier" style="width:100%;">
+                <option value="free">Free</option>
+                <option value="trader">Trader</option>
+                <option value="pro">Pro</option>
+                <option value="institutional">Institutional</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">STATUS</label>
+            <select class="filter-select" id="modal-active" style="width:100%;">
+                <option value="1">Active</option>
+                <option value="0">Disabled</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="filter-btn" onclick="saveUser()">Save Changes</button>
+            <button class="filter-btn secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentPage = 1;
+let editingUserId = null;
+
+// ============ Auth Check ============
+async function checkAdmin() {
+    try {
+        const res = await fetch('/api/admin/stats', { credentials: 'include', cache: 'no-store' });
+        if (res.status === 401) { window.location.href = './login.html'; return; }
+        if (res.status === 403) {
+            document.getElementById('denied-view').style.display = 'flex';
+            return;
+        }
+        if (!res.ok) { window.location.href = './login.html'; return; }
+
+        document.getElementById('admin-panel').style.display = 'block';
+        const stats = await res.json();
+        renderStats(stats);
+        loadUsers();
+
+        // Get admin email
+        const me = await fetch('/api/auth/me', { credentials: 'include' });
+        if (me.ok) {
+            const data = await me.json();
+            document.getElementById('admin-email').textContent = data.user.email;
+        }
+    } catch (e) {
+        window.location.href = './login.html';
+    }
+}
+
+// ============ Stats ============
+function renderStats(s) {
+    document.getElementById('s-users').textContent = s.total_users.toLocaleString();
+    document.getElementById('s-calls-today').textContent = s.calls_today.toLocaleString();
+    document.getElementById('s-calls-month').textContent = s.calls_month.toLocaleString();
+    document.getElementById('s-response').textContent = s.avg_response_ms + 'ms';
+
+    // Tier breakdown
+    let tierHtml = '';
+    for (const [tier, count] of Object.entries(s.tier_breakdown || {})) {
+        tierHtml += `<div class="list-item"><span class="li-label"><span class="tier-badge ${tier}">${tier}</span></span><span class="li-value">${count}</span></div>`;
+    }
+    document.getElementById('tier-breakdown').innerHTML = tierHtml || '<div class="loading">No data</div>';
+
+    // Countries
+    let countryHtml = '';
+    (s.countries || []).forEach(c => {
+        countryHtml += `<div class="list-item"><span class="li-label">${c.country || 'Unknown'}</span><span class="li-value">${c.count}</span></div>`;
+    });
+    document.getElementById('countries-list').innerHTML = countryHtml || '<div class="loading">No data</div>';
+
+    // Top endpoints
+    let epHtml = '';
+    (s.top_endpoints || []).forEach(e => {
+        epHtml += `<div class="list-item"><span class="li-label" style="font-family:var(--font-mono);font-size:0.72rem;">${e.endpoint}</span><span class="li-value">${e.count.toLocaleString()}</span></div>`;
+    });
+    document.getElementById('top-endpoints').innerHTML = epHtml || '<div class="loading">No data</div>';
+
+    // Top users
+    let tuHtml = '';
+    (s.top_users || []).forEach(u => {
+        tuHtml += `<div class="list-item"><span class="li-label">${u.email} <span class="tier-badge ${u.tier}" style="margin-left:6px;">${u.tier}</span></span><span class="li-value">${u.calls.toLocaleString()}</span></div>`;
+    });
+    document.getElementById('top-users').innerHTML = tuHtml || '<div class="loading">No data</div>';
+}
+
+// ============ Users ============
+async function loadUsers() {
+    const search = document.getElementById('search-input').value;
+    const tier = document.getElementById('tier-filter').value;
+    const url = `/api/admin/users?search=${encodeURIComponent(search)}&tier=${tier}&page=${currentPage}&limit=20`;
+
+    const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    let html = `<table class="users-table"><thead><tr>
+        <th>ID</th><th>Email</th><th>Name</th><th>Tier</th><th>Country</th><th>Status</th><th>Joined</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+    data.users.forEach(u => {
+        html += `<tr>
+            <td style="font-family:var(--font-mono);color:var(--text-muted);">#${u.id}</td>
+            <td><strong>${u.email}</strong></td>
+            <td style="color:var(--text-muted);">${u.name || '—'}</td>
+            <td><span class="tier-badge ${u.tier}">${u.tier}</span></td>
+            <td>${u.country || '—'}</td>
+            <td><span class="status-dot ${u.is_active ? 'active' : 'inactive'}"></span></td>
+            <td style="font-size:0.7rem;color:var(--text-muted);">${u.created_at ? u.created_at.split('T')[0] : '—'}</td>
+            <td><button class="action-btn" onclick="viewUserProfile(${u.id})">View Profile</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    // Pagination
+    html += '<div class="pagination">';
+    html += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>← Prev</button>`;
+    html += `<span class="page-info">Page ${data.page} of ${data.pages} (${data.total} users)</span>`;
+    html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage>=data.pages?'disabled':''}>Next →</button>`;
+    html += '</div>';
+
+    document.getElementById('users-container').innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; loadUsers(); }
+
+// ============ User Profile View ============
+async function viewUserProfile(id) {
+    editingUserId = id;
+    document.getElementById('main-dashboard').style.display = 'none';
+    document.getElementById('user-profile').style.display = 'block';
+    
+    // Show loading state in profile
+    document.getElementById('up-logs-container').innerHTML = '<tr><td colspan="4" class="loading">Loading details...</td></tr>';
+    document.getElementById('up-keys-container').innerHTML = '';
+    
+    const res = await fetch(`/api/admin/users/${id}/details`, { credentials: 'include', cache: 'no-store' });
+    if (!res.ok) {
+        showToast('❌ Failed to load user details', true);
+        closeProfile();
+        return;
+    }
+    
+    const data = await res.json();
+    
+    // Header Data
+    document.getElementById('up-email').textContent = data.email;
+    document.getElementById('up-name').textContent = data.name || 'No Name';
+    document.getElementById('up-id').textContent = '#' + data.id;
+    document.getElementById('up-joined').textContent = data.created_at ? data.created_at.split('T')[0] : '—';
+    
+    // Badges
+    const tierBadge = document.getElementById('up-tier-badge');
+    tierBadge.className = `tier-badge ${data.tier}`;
+    tierBadge.textContent = data.tier;
+    
+    document.getElementById('up-country-badge').textContent = data.country || 'Unknown';
+    
+    const statusBadge = document.getElementById('up-status-badge');
+    if (data.is_active) {
+        statusBadge.textContent = 'Active';
+        statusBadge.style.background = 'rgba(0,200,83,0.1)';
+        statusBadge.style.color = 'var(--accent-green)';
+    } else {
+        statusBadge.textContent = 'Disabled';
+        statusBadge.style.background = 'rgba(255,82,82,0.1)';
+        statusBadge.style.color = 'var(--accent-red)';
+    }
+    
+    // Selects
+    document.getElementById('up-tier-select').value = data.tier;
+    document.getElementById('up-status-select').value = data.is_active ? '1' : '0';
+    
+    // Stats
+    document.getElementById('up-calls-today').textContent = data.calls_today.toLocaleString();
+    document.getElementById('up-calls-month').textContent = data.calls_month.toLocaleString();
+    document.getElementById('up-keys-count').textContent = data.api_keys.length;
+    
+    // Keys
+    let keysHtml = '';
+    if (data.api_keys.length === 0) {
+        keysHtml = '<div class="loading" style="padding:20px;">No API keys found.</div>';
+    } else {
+        data.api_keys.forEach(k => {
+            keysHtml += `<div class="list-item">
+                <span class="li-label" style="font-family:var(--font-mono);">${k.key.substring(0,12)}...</span>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <span class="status-dot ${k.is_active ? 'active' : 'inactive'}"></span>
+                    <span style="font-size:0.7rem;color:var(--text-muted);">Limit: ${k.daily_limit}</span>
+                </div>
+            </div>`;
+        });
+    }
+    document.getElementById('up-keys-container').innerHTML = keysHtml;
+    
+    // Logs
+    let logsHtml = '';
+    if (data.usage_logs.length === 0) {
+        logsHtml = '<tr><td colspan="4" class="loading">No recent activity.</td></tr>';
+    } else {
+        data.usage_logs.forEach(l => {
+            logsHtml += `<tr>
+                <td style="font-size:0.7rem;color:var(--text-muted);">${l.timestamp}</td>
+                <td style="font-family:var(--font-mono);">${l.endpoint}</td>
+                <td>${l.response_time_ms > 0 ? l.response_time_ms + ' ms' : '—'}</td>
+                <td style="font-size:0.75rem;color:var(--text-muted);">${l.client_ip || '—'}</td>
+            </tr>`;
+        });
+    }
+    document.getElementById('up-logs-container').innerHTML = logsHtml;
+}
+
+function closeProfile() {
+    document.getElementById('user-profile').style.display = 'none';
+    document.getElementById('main-dashboard').style.display = 'block';
+    editingUserId = null;
+    loadUsers(); // Refresh list to reflect any changes
+}
+
+async function saveUserProfile() {
+    if (!editingUserId) return;
+    const tier = document.getElementById('up-tier-select').value;
+    const isActive = document.getElementById('up-status-select').value === '1';
+
+    if (!confirm(`Update user?\nTier: ${tier}\nActive: ${isActive}`)) return;
+
+    const res = await fetch(`/api/admin/users/${editingUserId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tier, is_active: isActive })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+        showToast('✅ ' + data.message);
+        viewUserProfile(editingUserId); // Reload profile
+        
+        // Refresh global stats
+        const statsRes = await fetch('/api/admin/stats', { credentials: 'include' });
+        if (statsRes.ok) renderStats(await statsRes.json());
+    } else {
+        showToast('❌ ' + (data.detail || 'Error'), true);
+    }
+}
+
+// ============ Export ============
+function exportCSV() {
+    window.open('/api/admin/users/export', '_blank');
+}
+
+// ============ Audit ============
+async function loadAudit() {
+    const res = await fetch('/api/admin/audit', { credentials: 'include', cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    let html = '';
+    if (!data.actions.length) {
+        html = '<div class="loading">No admin actions yet.</div>';
+    } else {
+        data.actions.forEach(a => {
+            html += `<div class="audit-entry">
+                <div class="ae-time">${a.timestamp}</div>
+                <div><strong>${a.admin}</strong> → <span class="ae-action">${a.action}</span> → ${a.target}</div>
+                <div style="font-size:0.65rem;color:var(--text-muted);">IP: ${a.ip}</div>
+            </div>`;
+        });
+    }
+    document.getElementById('audit-container').innerHTML = html;
+}
+
+// ============ Tabs ============
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'audit') loadAudit();
+}
+
+// ============ Helpers ============
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? 'var(--accent-red)' : 'var(--accent-green)';
+    t.style.color = isError ? '#fff' : '#000';
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3000);
+}
+
+async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = './login.html';
+}
+
+// ============ Init ============
+checkAdmin();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dash/
+Disallow: /v1/
+Disallow: /health
+
+Sitemap: https://flow.horustek.pro/sitemap.xml

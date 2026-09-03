@@ -4,11 +4,17 @@ Horus Flow Intelligence — MCP Server (Public Distribution)
 ===========================================================
 This is the official Model Context Protocol (MCP) Server for
 Horus Flow Intelligence. It exposes institutional-grade crypto
-and equity orderflow signals directly to AI coding assistants.
+and equity orderflow signals directly to AI coding assistants
+(like Claude Desktop, Cursor, Cline, etc.).
 
 Requirements:
 - pip install mcp httpx
-- A valid RapidAPI Key
+- A valid RapidAPI Key from:
+  https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence
+
+Usage (Claude Desktop / Cursor):
+1. Set the environment variable `RAPIDAPI_KEY`
+2. Configure your agent to run: `mcp run horus_mcp_public.py`
 
 © 2026 HORUS TECH LTD
 """
@@ -28,12 +34,14 @@ RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY")
 
 if not RAPIDAPI_KEY:
     print(
-        "⚠️  WARNING: RAPIDAPI_KEY environment variable is missing.\n"
-        "Tools will return an authentication error when called.\n"
-        "To use this MCP server, obtain an API Key from:\n"
-        "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",
+        "❌ ERROR: RAPIDAPI_KEY environment variable is missing!\n"
+        "To use this AI Tool, you must obtain an API Key.\n"
+        "1. Go to: https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence\n"
+        "2. Subscribe to a plan to get your 'x-rapidapi-key'\n"
+        "3. Set it in your environment: export RAPIDAPI_KEY='your_key_here'",
         file=sys.stderr
     )
+    sys.exit(1)
 
 HEADERS = {
     "x-rapidapi-key": RAPIDAPI_KEY,
@@ -92,14 +100,32 @@ async def _fetch(endpoint: str) -> dict:
 # ─── Tool 1: Crypto Flow ─────────────────────────────────
 @mcp.tool()
 async def get_crypto_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow for a cryptocurrency.
-    
-    Returns signal (BUY_PRESSURE/SELL_PRESSURE/WHALE_EXIT/EMERGENCY_DUMP),
-    confidence score, bid/ask depth metrics, whale intent, toxicity level,
-    and flags like SPOOFING_DETECTED, BID_WALL_TRAP, DEPTH_COLLAPSE.
-    
+    """Get real-time institutional orderflow signal for a cryptocurrency.
+
+    Returns live microstructure intelligence extracted from:
+    - Binance Level 2 Orderbook (bid/ask imbalance ratio)
+    - Aggressive Trade Feed (buy vs sell delta)
+
+    The response includes strict machine-parseable fields:
+    - signal: BUY_PRESSURE / SELL_PRESSURE / NEUTRAL / WHALE_DUMP / DEPTH_COLLAPSE / etc.
+    - action: WAIT / ENTER_LONG / ENTER_SHORT / BLOCK_LONG / EXIT_LONG / FULL_EXIT / etc.
+    - direction_bias: BULLISH / BEARISH / NEUTRAL
+    - confidence: 0.0 to 1.0 AI confidence score
+    - risk: LOW / MEDIUM / HIGH / EXTREME
+    - market_regime: TRENDING / RANGING / CHOP / VOLATILE / LIQUIDITY_EVENT / NO_TRADE
+    - engine_version: semantic version string
+    - freshness_ms: data age in milliseconds
+    - timestamp_utc: ISO 8601 UTC timestamp
+    - explanation: clean one-liner reasoning
+    - metrics: full orderflow metrics (bid_ratio, buy_ratio, delta_5s, etc.)
+
+    Bots should use 'action' for trade decisions instead of parsing 'description'.
+
     Args:
-        symbol: Trading pair (e.g., "BTCUSDT", "ETHUSDT", "SOLUSDT")
+        symbol: Trading pair symbol (e.g., BTCUSDT, ETHUSDT, SOLUSDT)
+
+    Example usage:
+        get_crypto_flow("BTCUSDT")
     """
     clean = symbol.replace("/", "").replace("-", "").upper()
     data = await _fetch(f"/v1/flow/crypto/{clean}")
@@ -109,14 +135,24 @@ async def get_crypto_flow(symbol: str) -> str:
 # ─── Tool 2: Equity Flow ─────────────────────────────────
 @mcp.tool()
 async def get_equity_flow(symbol: str) -> str:
-    """Get real-time institutional orderflow for a US equity stock.
-    
-    Returns signal (BUY_PRESSURE/SELL_PRESSURE/WHALE_EXIT/EMERGENCY_DUMP),
-    confidence score, large sell orders count, block trades, toxicity,
-    and flags like WATERFALL_DUMP, PULLED_BID_WALL_SPOOF.
-    
+    """Get real-time institutional orderflow signal for a US equity stock.
+
+    Returns live microstructure intelligence from Alpaca IEX feed:
+    - signal: BUY_PRESSURE / SELL_PRESSURE / NEUTRAL
+    - confidence: 0.0 to 1.0 AI confidence score
+    - market_state: TRENDING_UP / TRENDING_DOWN / RANGE_BOUND / VOLATILE
+    - risk: LOW / MEDIUM / HIGH / EXTREME
+    - bid_ratio: orderbook bid imbalance
+    - buy_ratio: aggressive buy percentage
+    - delta_5s: net volume delta over last 5 seconds
+
+    Note: US equity data is available during market hours (14:30-21:00 UTC).
+
     Args:
-        symbol: Stock ticker (e.g., "SPY", "AAPL", "TSLA", "NVDA", "MSFT")
+        symbol: US stock ticker (e.g., AAPL, NVDA, TSLA, MSFT)
+
+    Example usage:
+        get_equity_flow("NVDA")
     """
     clean = symbol.upper()
     data = await _fetch(f"/v1/flow/equity/{clean}")
@@ -126,17 +162,22 @@ async def get_equity_flow(symbol: str) -> str:
 # ─── Tool 3: Multi-Symbol Scanner ────────────────────────
 @mcp.tool()
 async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT") -> str:
-    """Scan multiple cryptocurrencies for orderflow signals at once.
-    
-    Returns a summary with strongest buy/sell signals and individual results
-    sorted by confidence. Use this for portfolio-wide risk assessment.
-    
+    """Scan multiple cryptocurrencies for orderflow signals simultaneously.
+
+    Useful for finding the strongest buy/sell pressure across
+    multiple assets at once. Returns a sorted summary.
+
     Args:
-        symbols: Comma-separated trading pairs (default: BTC, ETH, SOL, BNB, XRP)
+        symbols: Comma-separated list of trading pairs
+                 (default: BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT)
+
+    Example usage:
+        scan_crypto_flow("BTCUSDT,ETHUSDT,SOLUSDT")
     """
     import asyncio
     symbol_list = [s.strip().upper() for s in symbols.split(",")]
     
+    # Fetch all symbols in parallel
     tasks = [_fetch(f"/v1/flow/crypto/{sym}") for sym in symbol_list]
     raw_results = await asyncio.gather(*tasks)
     
@@ -152,10 +193,15 @@ async def scan_crypto_flow(symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUS
     summary = {
         "scanned": len(symbol_list),
         "available": len([r for r in results if r.get("signal") != "UNAVAILABLE"]),
-        "strongest_buy": next((r["symbol"] for r in results if r.get("signal") == "BUY_PRESSURE"), None),
-        "strongest_sell": next((r["symbol"] for r in results if r.get("signal") == "SELL_PRESSURE"), None),
+        "strongest_buy": next(
+            (r["symbol"] for r in results if r.get("signal") == "BUY_PRESSURE"), None
+        ),
+        "strongest_sell": next(
+            (r["symbol"] for r in results if r.get("signal") == "SELL_PRESSURE"), None
+        ),
         "results": results,
     }
+
     return json.dumps(summary, indent=2)
 
 
@@ -278,19 +324,47 @@ async def get_market_intelligence(symbol: str = "BTCUSDT") -> str:
     return json.dumps(data, indent=2)
 
 
+# ─── Tool 11: Horus Cortex Cognitive Brain ────────────────
+@mcp.tool()
+async def get_horus_cortex() -> str:
+    """
+    Get the sovereign cognitive brain synthesis (Horus Cortex Symphony v3.0).
+    Fuses 7 forensic evidence families with a real-time contradiction engine:
+    1. Price Structure & 15m/1h momentum returns
+    2. Dynamic Volume-Weighted Support & Resistance boundaries
+    3. Orderflow aggressive taker imbalance
+    4. Moving Average lagging confirmations
+    5. Cycle Memory & boundary touch fatigue
+    6. Market Breadth & Global Ignition
+    7. Microstructure Spoofing and Absorption Anomaly Detection
+    
+    Returns:
+    - regime_state: Current market regime (TRANSITION, EXPANSION, EXHAUSTION, BREAKDOWN)
+    - trust_score: 0-100 penalized confidence score
+    - action_policy: Exact autonomous bot sizing directives (ignition_multiplier, trend_multiplier, reversal_multiplier)
+    - execution_boundaries: Exact USD invalidation support and breakout resistance levels
+    - active_contradictions: Active conflicts between price and orderflow
+    - narrative: Deterministic institutional Arabic & English narrative
+    """
+    data = await _fetch("/v1/intelligence/cortex")
+    return json.dumps(data, indent=2)
+
+
 # ─── Resource: API Info ───────────────────────────────────
 @mcp.resource("horus://info")
 async def get_api_info() -> str:
     """Information about the Horus Flow Intelligence system."""
     return json.dumps({
-        "name": "Horus Flow Intelligence",
-        "version": "1.0.5",
+        "name": "Horus Flow & Cortex Intelligence",
+        "version": "3.0.0",
         "provider": "HORUS TECH LTD",
         "mcp_name": "pro.horustek/horus-flow-mcp",
-        "description": "Real-time institutional orderflow intelligence for Crypto & Equities",
+        "description": "Cognitive Market Brain and orderflow physics for Autonomous AI Agents",
         "supported_crypto": "All USDT pairs on Binance (BTC, ETH, SOL, BNB, XRP, etc.)",
         "supported_equities": "US stocks via IEX (SPY, AAPL, TSLA, NVDA, MSFT, AMZN, META, GOOGL)",
         "capabilities": [
+            "Level 4 Horus Cortex Cognitive Brain",
+            "Real-time Contradiction Engine (Price vs Flow)",
             "Whale detection and exit signals",
             "Spoofing and bid wall trap detection",
             "Liquidation heatmaps with dollar amounts",
@@ -300,8 +374,9 @@ async def get_api_info() -> str:
             "Volatility ignition detection",
             "Composite intelligence scoring (0-100)"
         ],
-        "pricing": "$29/month on RapidAPI",
+        "pricing": "Explorer (Free), Trader ($49/mo), Professional ($149/mo), Institutional ($499/mo)",
         "links": {
+            "portal": "https://flow.horustek.pro",
             "rapidapi": "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",
             "pypi": "https://pypi.org/project/horus-flow-mcp/",
             "mcp_registry": "https://registry.modelcontextprotocol.io/?q=horus"
@@ -316,12 +391,17 @@ def main():
         "--transport", choices=["stdio", "sse"], default="stdio",
         help="Transport mode: stdio (Claude Desktop) or sse"
     )
+    parser.add_argument(
+        "--port", type=int, default=8012,
+        help="Port for SSE transport (default: 8012)"
+    )
     args = parser.parse_args()
 
     if args.transport == "sse":
-        mcp.run(transport="sse")
+        mcp.run(transport="sse", host="0.0.0.0", port=args.port)
     else:
         mcp.run(transport="stdio")
+
 
 if __name__ == "__main__":
     main()

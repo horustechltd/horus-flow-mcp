@@ -1,0 +1,819 @@
+openapi: 3.0.0
+info:
+  title: Horus Flow Intelligence
+  description: |
+    Institutional-grade sub-second market microstructure API.
+    
+    **Level 1**: Real-time orderbook physics, tape delta, whale detection.
+    **Level 2**: HTA whale intent, spoofing detection, iceberg orders.
+    **Level 3**: Liquidation Heatmap, Cross-Exchange Flow, Composite Intelligence.
+    **Level 4**: Horus Cortex Cognitive Market Brain (Symphony v3.0).
+    
+    All endpoints return a **strict machine-parseable schema** alongside backward-compatible fields:
+    `action`, `direction_bias`, `risk`, `market_regime`, `confidence`, `engine_version`,
+    `freshness_ms`, `timestamp_utc`, `explanation`.
+    
+    Bots should use the `action` enum for trade decisions instead of parsing `description` text.
+    
+    For AI trading agents, quantitative developers, and institutional dashboards.
+  version: 3.0.0
+
+servers:
+  - url: http://45.151.122.96:8011
+    description: Direct Server Access (Bypassing Cloudflare)
+
+# ══════════════════════════════════════════════════════
+# SHARED SCHEMAS
+# ══════════════════════════════════════════════════════
+
+components:
+  schemas:
+    ActionType:
+      type: string
+      enum:
+        - WAIT
+        - ENTER_LONG
+        - ENTER_SHORT
+        - BLOCK_LONG
+        - BLOCK_SHORT
+        - EXIT_LONG
+        - EXIT_SHORT
+        - REDUCE_EXPOSURE
+        - FULL_EXIT
+      description: |
+        Machine-parseable trade action. Bots should switch on this field:
+        - `WAIT` — No clear edge, stay flat
+        - `ENTER_LONG` — Strong bullish setup
+        - `ENTER_SHORT` — Strong bearish setup
+        - `BLOCK_LONG` — Do NOT open longs
+        - `BLOCK_SHORT` — Do NOT open shorts
+        - `EXIT_LONG` — Close existing longs
+        - `EXIT_SHORT` — Close existing shorts
+        - `REDUCE_EXPOSURE` — Trim position size
+        - `FULL_EXIT` — Close everything immediately
+
+    DirectionBias:
+      type: string
+      enum: [BULLISH, BEARISH, NEUTRAL]
+      description: Overall market direction bias.
+
+    RiskLevel:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, EXTREME]
+      description: Structured risk assessment.
+
+    MarketRegime:
+      type: string
+      enum: [TRENDING, RANGING, CHOP, VOLATILE, LIQUIDITY_EVENT, NO_TRADE]
+      description: Current market phase/regime.
+
+    StrictMetadata:
+      type: object
+      description: Strict schema fields present on EVERY response.
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionType'
+        direction_bias:
+          $ref: '#/components/schemas/DirectionBias'
+        risk:
+          $ref: '#/components/schemas/RiskLevel'
+        market_regime:
+          $ref: '#/components/schemas/MarketRegime'
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: AI confidence score (0.0–1.0)
+        engine_version:
+          type: string
+          example: "2.1.0"
+          description: Semantic version of the engine
+        freshness_ms:
+          type: integer
+          description: Data age in milliseconds (0 = real-time)
+        timestamp_utc:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC timestamp of this response
+        explanation:
+          type: string
+          description: Clean one-liner reasoning (no emojis, no VERDICT prefix)
+          example: "Heavy bidding combined with aggressive buying detected."
+
+    WhaleIntent:
+      type: object
+      nullable: true
+      description: Live whale direction data from HTA trading soldiers.
+      properties:
+        direction:
+          type: string
+          enum: [LONG, SHORT]
+        buy_ratio:
+          type: number
+          format: float
+        delta_30s:
+          type: number
+          description: Net volume delta over 30 seconds ($)
+        persistence:
+          type: integer
+          description: Consecutive snapshots confirming intent
+        exec_intensity:
+          type: number
+          format: float
+          description: Execution intensity (equivalent trades)
+        age_seconds:
+          type: number
+          format: float
+
+
+paths:
+  # ══════════════════════════════════════════
+  # CRYPTO FLOW (Level 1-2)
+  # ══════════════════════════════════════════
+
+  /v1/flow/crypto/{symbol}:
+    get:
+      summary: Crypto Flow + Whale Intent
+      tags: [Crypto Flow]
+      operationId: getCryptoFlow
+      description: |
+        Get real-time institutional flow physics and signals for a crypto asset.
+        
+        Includes `whale_intent` — live whale direction data from Horus HTA trading soldiers.
+        
+        **Strict schema fields** (`action`, `direction_bias`, `risk`, etc.) are derived
+        deterministically from the raw signal. Use `action` for automated trade decisions.
+      parameters:
+        - in: path
+          name: symbol
+          schema:
+            type: string
+          required: true
+          description: Crypto trading pair (e.g., BTCUSDT)
+          example: BTCUSDT
+      responses:
+        '200':
+          description: Real-time flow intelligence
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      symbol:
+                        type: string
+                        example: BTCUSDT
+                      signal:
+                        type: string
+                        enum:
+                          - BUY_PRESSURE
+                          - STRONG_BUY_PRESSURE
+                          - SELL_PRESSURE
+                          - STRONG_SELL_PRESSURE
+                          - WHALE_DUMP
+                          - WHALE_EXIT
+                          - DEPTH_COLLAPSE
+                          - EMERGENCY_DUMP
+                          - NEUTRAL
+                      market_state:
+                        type: string
+                        enum: [ACCUMULATION, DISTRIBUTION, TRENDING_UP, TRENDING_DOWN, RANGE_BOUND, VOLATILE]
+                      description:
+                        type: string
+                        description: Human-readable text (legacy — use `explanation` instead)
+                      metrics:
+                        type: object
+                        properties:
+                          bid_ask_ratio:
+                            type: number
+                          buy_sell_ratio:
+                            type: number
+                          delta_5s:
+                            type: number
+                          delta_30s:
+                            type: number
+                          whale_activity:
+                            type: boolean
+                          large_sell_count:
+                            type: integer
+                          wiseman_climate:
+                            type: object
+                          flags:
+                            type: array
+                            items:
+                              type: string
+                      whale_intent:
+                        $ref: '#/components/schemas/WhaleIntent'
+                      timestamp:
+                        type: number
+                        format: double
+
+  /v1/flow/crypto/{symbol}/history:
+    get:
+      summary: Flow History
+      tags: [Crypto Flow]
+      operationId: getCryptoFlowHistory
+      description: Returns the last N minutes of orderflow snapshots for a crypto asset. Useful for AI agents to detect pressure trends over time.
+      parameters:
+        - in: path
+          name: symbol
+          schema:
+            type: string
+          required: true
+          description: Crypto trading pair (e.g., BTCUSDT)
+          example: BTCUSDT
+        - in: query
+          name: minutes
+          schema:
+            type: integer
+            default: 30
+          required: false
+          description: Lookback period in minutes (1 to 60)
+          example: 5
+      responses:
+        '200':
+          description: Historical flow snapshots
+        '404':
+          description: No history available (symbol not being tracked)
+
+  # ══════════════════════════════════════════
+  # EQUITY FLOW
+  # ══════════════════════════════════════════
+
+  /v1/flow/equity/macro-blocks:
+    get:
+      summary: Equity Macro Blocks
+      tags: [Equity Flow]
+      operationId: getEquityMacroBlocks
+      description: Get the overall US Market SPY Macro trend and all recent Institutional Block Trades (>$200k) from the last 5 minutes.
+      responses:
+        '200':
+          description: Macro block trade data
+
+  /v1/flow/equity/{symbol}:
+    get:
+      summary: Equity Flow (US Stocks)
+      tags: [Equity Flow]
+      operationId: getEquityFlow
+      description: Get real-time limit order imbalances and momentum delta for US Equities via Alpaca SIP.
+      parameters:
+        - in: path
+          name: symbol
+          schema:
+            type: string
+          required: true
+          description: US Equity ticker (e.g., NVDA)
+          example: NVDA
+      responses:
+        '200':
+          description: Equity flow data
+
+  # ══════════════════════════════════════════
+  # INTELLIGENCE — Climate & Ignition
+  # ══════════════════════════════════════════
+
+  /v1/intelligence/climate:
+    get:
+      summary: Market Climate
+      tags: [Intelligence]
+      operationId: getMarketClimate
+      description: |
+        WiseMan BTC Market Climate Gate.
+        
+        Returns the macro market regime (TREND/RANGE/CHOP/NO_TRADE), health status,
+        and strict schema fields. Data is computed from BTC daily EMA50 + 15m RSI/ATR/Volume
+        and refreshed every 5 minutes.
+      responses:
+        '200':
+          description: Market climate assessment
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      market_mode:
+                        type: string
+                        enum: [TREND, RANGE, CHOP, NO_TRADE, UNKNOWN]
+                      health:
+                        type: string
+                        enum: [HEALTHY, DECAYING, FRAGILE, UNKNOWN]
+                      recommendation:
+                        type: string
+                      reasoning:
+                        type: string
+                      aggression_level:
+                        type: number
+                        format: float
+
+  /v1/intelligence/ignitions:
+    get:
+      summary: Global Ignitions
+      tags: [Intelligence]
+      operationId: getIgnitions
+      description: |
+        Volatility Breakout Engine (VBE) scanner.
+        
+        Shows which coins are about to explode based on squeeze detection,
+        volume compression, and ignition scoring.
+        
+        Includes strict schema fields: `action`, `direction_bias`, `risk`, `market_regime`.
+      responses:
+        '200':
+          description: Ignition scanner data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      regime:
+                        type: string
+                        enum: [DORMANT, IGNITING, ERUPTING]
+                      regime_bias:
+                        type: string
+                        enum: [RISING, FALLING, NEUTRAL]
+                      global_ignition_score:
+                        type: number
+                        format: float
+                      top_ignitions:
+                        type: array
+                        items:
+                          type: object
+
+  /v1/intelligence/verdict/{symbol}:
+    get:
+      summary: Behavioral Court Verdict
+      tags: [Intelligence]
+      operationId: getCourtVerdict
+      description: |
+        Behavioral Court — What is the Court's judgment on this asset?
+        
+        Returns incubator state, rejection reason, and action recommendation.
+        Includes strict schema fields even when asset is NOT_TRACKED.
+      parameters:
+        - in: path
+          name: symbol
+          schema:
+            type: string
+          required: true
+          description: Trading pair (e.g., BTCUSDT)
+          example: BTCUSDT
+      responses:
+        '200':
+          description: Court verdict
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      symbol:
+                        type: string
+                      status:
+                        type: string
+                        enum: [NOT_TRACKED, HOT, WAITING_BOUNCE, ABSORBING, READY]
+
+  /v1/intelligence/incubator:
+    get:
+      summary: Incubator Pipeline
+      tags: [Intelligence]
+      operationId: getIncubator
+      description: |
+        Rejected assets being nursed for re-entry.
+        
+        Assets in 'ready' state have confirmed bounces and meet EdgeBridge entry criteria.
+        Includes strict schema fields: `action`, `risk`, `engine_version`.
+      responses:
+        '200':
+          description: Incubator pipeline data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      total_incubated:
+                        type: integer
+                      summary:
+                        type: object
+                      ready:
+                        type: array
+                        items:
+                          type: object
+                      hot:
+                        type: array
+                        items:
+                          type: object
+
+  # ══════════════════════════════════════════
+  # LEVEL 3 INTELLIGENCE
+  # ══════════════════════════════════════════
+
+  /v1/intelligence/liquidation-heatmap:
+    get:
+      summary: Liquidation Heatmap
+      tags: [Level 3 Intelligence]
+      operationId: getLiquidationHeatmap
+      description: |
+        Where is the price FORCED to go?
+        
+        Shows where leveraged positions are clustered and estimates liquidation
+        cascade zones. Uses Binance Futures OI, Long/Short ratios, Top Trader
+        positioning, and Taker Buy/Sell volume.
+        
+        **v2.1 action logic**: factors in `crowd_bias` and `smart_money_divergence`:
+        - OVERLEVERAGED_LONG + gravity DOWN → `action: BLOCK_LONG`
+        - Smart money divergence → `action: REDUCE_EXPOSURE`
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+            default: BTCUSDT
+          required: false
+          description: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT)
+          example: BTCUSDT
+      responses:
+        '200':
+          description: Liquidation heatmap data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      symbol:
+                        type: string
+                      current_price:
+                        type: number
+                      gravity_direction:
+                        type: string
+                        enum: [UP, DOWN, NEUTRAL]
+                      gravity_score:
+                        type: number
+                        format: float
+                        minimum: 0
+                        maximum: 1
+                      crowd_bias:
+                        type: string
+                        enum: [OVERLEVERAGED_LONG, OVERLEVERAGED_SHORT, LONG_HEAVY, SHORT_HEAVY, BALANCED]
+                      smart_money_divergence:
+                        type: boolean
+                      estimated_liquidation_zones:
+                        type: object
+                        properties:
+                          long_zones:
+                            type: array
+                            items:
+                              type: number
+                          short_zones:
+                            type: array
+                            items:
+                              type: number
+        '404':
+          description: Symbol not tracked
+
+  /v1/intelligence/cross-exchange-flow:
+    get:
+      summary: Cross-Exchange Flow
+      tags: [Level 3 Intelligence]
+      operationId: getCrossExchangeFlow
+      description: |
+        Is the move REAL or speculative?
+        
+        Compares Spot vs Futures volume, tracks Futures Premium/Discount,
+        and monitors OI velocity to detect aggressive positioning.
+        
+        **v2.1 funding logic**: Extreme funding rates (>5bps) influence the action:
+        - High positive funding + HYPER_SPECULATION → `action: BLOCK_LONG`
+        - High negative funding + HYPER_SPECULATION → `action: BLOCK_SHORT`
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+            default: BTCUSDT
+          required: false
+          description: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT)
+          example: BTCUSDT
+      responses:
+        '200':
+          description: Cross-exchange flow data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      symbol:
+                        type: string
+                      market_type:
+                        type: string
+                        enum: [SPOT_DRIVEN, SPECULATION_DOMINATED, HYPER_SPECULATION]
+                      futures_spot_volume_ratio:
+                        type: number
+                      premium_bias:
+                        type: string
+                        enum: [BULLISH, BEARISH, NEUTRAL]
+                      funding_rate:
+                        type: number
+                        format: float
+                      positioning_signal:
+                        type: string
+                        enum: [STABLE, AGGRESSIVE_POSITIONING_LONG, AGGRESSIVE_POSITIONING_SHORT, MASS_DELEVERAGING]
+        '404':
+          description: Symbol not tracked
+
+  /v1/intelligence/composite:
+    get:
+      summary: Composite Intelligence (The Verdict)
+      tags: [Level 3 Intelligence]
+      operationId: getCompositeIntelligence
+      description: |
+        The Final Verdict — ONE number to rule them all.
+        
+        Combines 4 intelligence layers into a single actionable score (0-100):
+          - Climate (WiseMan): Is the market worth trading?
+          - Ignition (VBE): Is volatility about to explode?
+          - Heatmap (Liquidations): Where is price forced to go?
+          - XFlow (Spot↔Futures): Is the move real or speculative?
+        
+        Verdicts: `FULL_CONVICTION` (>80), `PARTIAL_CONVICTION` (60-80),
+        `NEUTRAL` (40-60), `STAY_OUT` (<40).
+        
+        **v2.1**: Includes `confidence` (0.0–1.0) = composite_score/100.
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+            default: BTCUSDT
+          required: false
+          description: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT)
+          example: BTCUSDT
+      responses:
+        '200':
+          description: Composite intelligence score and verdict
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/StrictMetadata'
+                  - type: object
+                    properties:
+                      symbol:
+                        type: string
+                      composite_score:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      verdict:
+                        type: string
+                        enum: [FULL_CONVICTION, PARTIAL_CONVICTION, NEUTRAL, STAY_OUT]
+                      direction:
+                        type: string
+                        enum: [LONG, SHORT, NEUTRAL]
+                      breakdown:
+                        type: object
+                        properties:
+                          climate_score:
+                            type: number
+                          ignition_score:
+                            type: number
+                          heatmap_score:
+                            type: number
+                          xflow_score:
+                            type: number
+                      one_liner:
+                        type: string
+        '404':
+          description: Symbol not tracked
+
+  /v1/intelligence/market-intelligence:
+    get:
+      summary: Full Market Intelligence (All-in-One)
+      tags: [Level 3 Intelligence]
+      operationId: getFullMarketIntelligence
+      description: |
+        Everything in ONE call.
+        
+        Returns ALL intelligence layers for ALL tracked symbols:
+        Climate + Ignition + Heatmap + XFlow + Composite Score.
+        
+        Includes `action_summary` — a quick-lookup per-symbol map with `action`,
+        `direction_bias`, `risk`, `composite_score`, and `verdict`.
+        
+        This is the ultimate endpoint for dashboards and AI agents
+        that need complete market context in a single request.
+      responses:
+        '200':
+          description: Full market intelligence dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp_utc:
+                    type: string
+                    format: date-time
+                  engine_version:
+                    type: string
+                  action_summary:
+                    type: object
+                    description: Per-symbol quick lookup
+                    additionalProperties:
+                      type: object
+                      properties:
+                        action:
+                          $ref: '#/components/schemas/ActionType'
+                        direction_bias:
+                          $ref: '#/components/schemas/DirectionBias'
+                        risk:
+                          $ref: '#/components/schemas/RiskLevel'
+                        composite_score:
+                          type: number
+                        verdict:
+                          type: string
+                  symbols:
+                    type: object
+                    description: Full data per symbol (heatmap + xflow + composite)
+                  climate:
+                    type: object
+                  ignition:
+                    type: object
+                  cortex:
+                    type: object
+                    description: Cognitive brain executive summary
+
+  /v1/intelligence/cortex:
+    get:
+      summary: Horus Cortex Cognitive Market Brain (Symphony v3.0)
+      tags: [Level 4 Cognitive Intelligence]
+      operationId: getHorusCortex
+      description: |
+        The Sovereign Cognitive Brain of the Horus Ecosystem.
+        Fuses 7 forensic families:
+          1. Price Structure (HH/HL, 15m/1h Momentum Returns)
+          2. Dynamic S/R Map (Volume-weighted Structural Pivots)
+          3. Orderflow (Taker Aggressive Ratio, Imbalance & Delta)
+          4. Lagging Witnesses (Moving Averages, Macro Confirmations)
+          5. Cycle Memory (Wave Extension %, Touch Count at Boundaries)
+          6. Breadth & RS (Global Ignition, Altcoin Flow Gravity)
+          7. Microstructure Anomaly (Absorption Traps, Spoofing, Wall Pulls)
+
+        Features:
+          - First-Class Contradiction Engine (Catches Divergences like Price-Up vs Flow-Down)
+          - Penalized Trust Score (0-100) based on Evidence Freshness and Coherence
+          - Execution Boundaries (Concrete Support/Resistance Invalidation Levels in USD)
+          - Dynamic Action Policy (Position Sizing Multipliers for Autonomous Bots)
+          - Deterministic Institutional Arabic & English Narrative
+      responses:
+        '200':
+          description: Full cognitive consensus and machine-readable action policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  timestamp_utc:
+                    type: string
+                    format: date-time
+                  engine:
+                    type: string
+                    example: "Horus Cortex Symphony v3.0"
+                  regime_state:
+                    type: string
+                    enum: [BUILDING, EXPANSION, HEALTHY_CONSOLIDATION, TRANSITION, EXHAUSTION, BREAKDOWN]
+                    example: "TRANSITION"
+                  transition_direction:
+                    type: string
+                    enum: [IMPROVING, STABLE, DETERIORATING]
+                    example: "STABLE"
+                  trust_score:
+                    type: number
+                    format: float
+                    example: 46.1
+                    description: Penalized confidence score (0.0–100.0)
+                  action_policy:
+                    type: object
+                    description: Direct execution policy for autonomous bots
+                    properties:
+                      directive:
+                        type: string
+                        example: "Deteriorating Transition: Capital Preservation Lock (0.0x)"
+                      ignition_multiplier:
+                        type: number
+                        example: 0.0
+                      trend_multiplier:
+                        type: number
+                        example: 0.0
+                      reversal_multiplier:
+                        type: number
+                        example: 0.5
+                      shock_multiplier:
+                        type: number
+                        example: 0.0
+                      ignition_allowed:
+                        type: boolean
+                        example: false
+                      trend_allowed:
+                        type: boolean
+                        example: false
+                      reversal_allowed:
+                        type: boolean
+                        example: true
+                  execution_boundaries:
+                    type: object
+                    description: Exact USD price levels for stop-loss and targets
+                    properties:
+                      btc_price:
+                        type: number
+                        example: 77955.01
+                      invalidation_support:
+                        type: number
+                        example: 77176.0
+                      breakout_resistance:
+                        type: number
+                        example: 78735.0
+                      invalidation_risk_pct:
+                        type: number
+                        example: 1.0
+                      breakout_target_pct:
+                        type: number
+                        example: 1.0
+                  market_vitals:
+                    type: object
+                    properties:
+                      taker_ratio:
+                        type: number
+                        example: 2.07
+                      global_ignition:
+                        type: number
+                        example: 0.081
+                      global_dominant_gravity:
+                        type: string
+                        example: "DOWN"
+                      btc_15m_return_pct:
+                        type: number
+                        example: 0.12
+                      btc_1h_return_pct:
+                        type: number
+                        example: 0.353
+                  active_contradictions:
+                    type: array
+                    description: Active conflicts between price and orderflow
+                    items:
+                      type: object
+                      properties:
+                        contradiction_id:
+                          type: string
+                          example: "BULLISH_PRICE_vs_HOLLOW_BREADTH"
+                        category:
+                          type: string
+                          example: "PRICE_VS_BREADTH"
+                        severity:
+                          type: string
+                          example: "MEDIUM"
+                        description:
+                          type: string
+                          example: "Bitcoin rising on isolated volume while broad market breadth is dormant"
+                  narrative:
+                    type: object
+                    description: Deterministic institutional narrative
+                    properties:
+                      headline:
+                        type: string
+                        example: "🎼 تقرير عقل حورس: مرحلة انتقالية وإعادة تقييم (موثوقية 46%)"
+                      summary_arabic:
+                        type: string
+                      summary_english:
+                        type: string
+                      risk_factors:
+                        type: array
+                        items:
+                          type: string
+                      what_improves_verdict:
+                        type: array
+                        items:
+                          type: string
+                      what_worsens_verdict:
+                        type: array
+                        items:
+                          type: string
+                  data_freshness:
+                    type: string
+                    example: "FRESH"
+        '403':
+          description: Subscription upgrade required (requires PRO plan or higher)

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Horus Commander - Institutional Hub</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/captains.css?v=21">
+    <!-- TradingView Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <!-- Auth Check -->
+    <script>
+        fetch('/api/auth/me', {credentials: 'include'})
+            .then(async (r) => {
+                if (!r.ok) { window.location.href = '/site/login.html'; return; }
+                const data = await r.json();
+                const key = data.api_keys.length > 0 ? data.api_keys[0].key : '';
+                if (key) {
+                    const keyInput = document.getElementById('rapid-key');
+                    if (keyInput) {
+                        keyInput.value = key;
+                        keyInput.style.display = 'none';
+                    }
+                }
+            })
+            .catch(() => { window.location.href = '/site/login.html'; });
+    </script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#00ff9d"/>
+            </svg>
+            <span>HORUS <span style="font-weight:400; color:var(--text-dim);">INSTITUTIONAL ORDERFLOW</span></span>
+        </div>
+        
+        <div class="nav-links">
+            <a href="captains.html" class="nav-link active">Dashboard</a>
+            <a href="index.html" class="nav-link">System</a>
+        </div>
+
+        <div class="nav-center">
+            <input type="password" id="rapid-key" placeholder="API Key" class="key-input font-mono" style="display: none;">
+            <div class="pulse-dot" id="pulse-dot"></div>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <!-- COMMAND CONSOLE TOOLBAR -->
+        <div class="glass-panel" style="padding: 15px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <h1 id="display-symbol" style="font-size: 2.2rem; font-weight: 900; margin: 0; font-family: var(--font-mono); color: var(--text-pure); letter-spacing: 2px;">STANDBY</h1>
+                <div style="border-left: 1px solid var(--glass-border); padding-left: 20px; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <span class="pulse-dot" id="pulse-dot" style="background: var(--text-dim); box-shadow: none;"></span>
+                        <span id="scan-label">Awaiting Target Lock...</span>
+                    </div>
+                    <div id="display-signal" style="font-size: 1rem; font-weight: 800; color: var(--text-dim); font-family: var(--font-mono);">SYSTEM IDLE</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="cmd-track-input" placeholder="e.g. BTCUSDT" class="track-input" value="BTCUSDT" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 4px; font-size: 1rem; padding: 10px 15px; width: 160px;">
+                <select id="cmd-track-type" class="track-select" style="padding: 10px 15px; background: rgba(0,0,0,0.5);">
+                    <option value="crypto">Crypto</option>
+                    <option value="equity">Equity</option>
+                </select>
+                <button class="btn-track" id="btn-cmd-track" style="padding: 10px 25px; font-size: 1rem;">ENGAGE</button>
+            </div>
+        </div>
+
+        <div id="radar-container" style="display: none;">
+
+            <!-- AI FORESIGHT VERDICT -->
+            <div id="foresight-verdict" class="glass-panel foresight-box" style="display: none;">
+                <div class="foresight-title" id="foresight-title">[ HORUS AI INTELLIGENCE ]</div>
+                <div class="foresight-desc" id="foresight-desc">--</div>
+            </div>
+
+            <!-- TOP 3 PILLARS (Glassmorphism) -->
+            <div class="top-grid">
+                
+                <!-- 1. Toxicity Index (Replaces Whale Trap) -->
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">TOXICITY INDEX</div>
+                        <div class="panel-icon">•••</div>
+                    </div>
+                    <div class="gauge-container">
+                        <svg class="gauge-svg" viewBox="0 0 100 50">
+                            <!-- Background Arc -->
+                            <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50"></path>
+                            <!-- Value Arc (Stroke dash array maps to percentage) -->
+                            <path class="gauge-value" id="toxicity-gauge" d="M 10 50 A 40 40 0 0 1 90 50" stroke-dasharray="0 125.6"></path>
+                        </svg>
+                        <div class="gauge-text">
+                            <div class="gauge-percent" id="toxicity-score">0%</div>
+                            <div class="gauge-label" id="toxicity-label">SAFE</div>
+                        </div>
+                    </div>
+                    <div class="gauge-status">
+                        <span style="color:var(--neon-green)">0</span>
+                        <span>Trend: <span id="toxicity-trend">Stable</span></span>
+                        <span style="color:var(--neon-red)">100</span>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-dim); display: flex; justify-content: space-between;">
+                        <span>Details</span>
+                        <span id="trap-desc" style="color: var(--text-pure); font-weight: 600;">LOB Stable</span>
+                    </div>
+                </div>
+
+                <!-- 2. Whale Intent Score -->
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">WHALE INTENT (CONFIDENCE)</div>
+                        <div class="panel-icon">•••</div>
+                    </div>
+                    <div class="intent-score" id="intent-label">NEUTRAL</div>
+                    <div class="intent-progress-bg">
+                        <div class="intent-progress-fill" id="intent-progress" style="width: 0%;"></div>
+                    </div>
+                    <div class="intent-details">
+                        <span class="label">Confidence</span>
+                        <span class="value" id="intent-score">0%</span>
+                    </div>
+                    <div class="intent-details">
+                        <span class="label">Flow Type</span>
+                        <span class="value" id="intent-flow">Balanced</span>
+                    </div>
+                </div>
+
+                <!-- 3. Orderflow Heatmap (Absorption) -->
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">ORDERFLOW HEATMAP</div>
+                        <div class="panel-icon">•••</div>
+                    </div>
+                    <div style="display:flex; justify-content: space-between; font-size:0.75rem; color:var(--text-dim); font-weight:600;">
+                        <span style="color:var(--neon-green)">Bid</span>
+                        <span style="color:var(--neon-red)">Ask</span>
+                    </div>
+                    <div class="ob-heatmap">
+                        <!-- We will use standard Bid/Ask split here representing depth -->
+                        <div class="ob-row">
+                            <div class="ob-bar-container"><div class="ob-bid-bar" id="abs-bid" style="width: 50%;"></div></div>
+                            <div class="ob-bar-container"><div class="ob-ask-bar" id="abs-ask" style="width: 50%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="ob-labels">
+                        <div><span id="lbl-bid" style="color:var(--text-pure); font-weight:600;">50%</span> BIDS</div>
+                        <div><span id="lbl-ask" style="color:var(--text-pure); font-weight:600;">50%</span> ASKS</div>
+                    </div>
+                    <div id="abs-verdict" style="margin-top: 15px; text-align: center; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--text-dim);">
+                        EQUAL PRESSURE
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- MIDDLE GRID (Chart + Accountability Log) -->
+            <div class="middle-grid">
+                
+                <!-- TRADINGVIEW CHART -->
+                <div class="glass-panel" style="padding: 0;">
+                    <div class="tv-wrapper" id="tv_chart_container">
+                        <!-- TV Widget injects here -->
+                    </div>
+                </div>
+
+                <!-- ACCOUNTABILITY SCOREBOARD (Logs) -->
+                <div class="glass-panel">
+                    <div class="panel-header" style="margin-bottom: 0.5rem;">
+                        <div class="panel-title">FORESIGHT ACCOUNTABILITY</div>
+                    </div>
+                    
+                    <div style="font-family: var(--font-main); font-size: 0.75rem; color: var(--text-dim); margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border);">
+                        Live audit of the Horus physics engine outcomes.
+                    </div>
+
+                    <!-- Visual Win Rate Bars -->
+                    <div class="winrate-container" style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); font-family: var(--font-mono);">GLOBAL WIN RATE</span>
+                            <span id="winrate-text" style="font-size: 2rem; font-weight: 900; color: var(--gold); font-family: var(--font-mono); line-height: 1; text-shadow: 0 0 10px rgba(255, 179, 0, 0.3);">--%</span>
+                        </div>
+                        
+                        <div style="display: flex; width: 100%; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; background: rgba(255,255,255,0.05); box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);">
+                            <div id="bar-wins" style="width: 0%; background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); transition: width 0.8s ease;"></div>
+                            <div id="bar-draws" style="width: 0%; background: var(--gold); transition: width 0.8s ease;"></div>
+                            <div id="bar-losses" style="width: 0%; background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); transition: width 0.8s ease;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-family: var(--font-mono); margin-top: 8px; font-weight: 700;">
+                            <span style="color: var(--neon-green);">WINS: <span id="stat-w">0</span></span>
+                            <span style="color: var(--gold);">DRAWS: <span id="stat-d">0</span></span>
+                            <span style="color: var(--neon-red);">LOSSES: <span id="stat-l">0</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="log-container" style="flex-grow: 1; display:flex; flex-direction: column; gap: 20px;">
+                        <!-- Active Locks -->
+                        <div>
+                            <h4 style="color: var(--neon-green); font-size: 0.7rem; letter-spacing: 1px; margin-bottom: 10px;">> ACTIVE_THESES_LIVE</h4>
+                            <div id="active-locks-container" style="font-family: var(--font-mono); font-size: 0.75rem; color: #e2e8f0; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                                <div style="color: var(--text-dim); font-style: italic;">No active predictions currently locked...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resolved History -->
+                        <div>
+                            <h4 style="color: var(--neon-blue); font-size: 0.7rem; letter-spacing: 1px; margin-bottom: 10px;">> RESOLVED_VERDICTS</h4>
+                            <div id="resolved-locks-container" style="font-family: var(--font-mono); font-size: 0.75rem; color: #e2e8f0; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                                <div style="color: var(--text-dim); font-style: italic;">Awaiting resolved predictions...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script src="./js/captains.js?v=10"></script>
+</body>
+</html>

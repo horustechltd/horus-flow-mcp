@@ -15,7 +15,7 @@
     <script>
         fetch('/api/auth/me', {credentials: 'include'})
             .then(async (r) => {
-                if (!r.ok) { window.location.href = '/site/login.html'; return; }
+                if (!r.ok) { window.location.href = '/login.html'; return; }
                 const data = await r.json();
                 const key = data.api_keys.length > 0 ? data.api_keys[0].key : '';
                 if (key) {
@@ -26,7 +26,7 @@
                     }
                 }
             })
-            .catch(() => { window.location.href = '/site/login.html'; });
+            .catch(() => { window.location.href = '/login.html'; });
     </script>
 </head>
 <body>

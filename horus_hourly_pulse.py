@@ -360,16 +360,29 @@ class HorusHourlyPulse:
 
         self.last_stance = current_stance
 
-        # Determine humanized verdict & advice
-        if trust_score >= 60 and cortex_regime in ["EXPANSION", "BUILDING"]:
-            verdict_badge = "🟢 <b>إشارة إيجابية:</b> تجميع حيتان وصعود مدعوم بالسيولة الحقيقية"
-            golden_advice = "الزخم ممتاز وتدفق السيولة يدعم الصعود. التزم بإدارة رأس المال وضع وقف خسارتك أسفل الدعم القريب."
-        elif cortex_regime in ["BREAKDOWN", "EXHAUSTION"] or trust_score < 35:
-            verdict_badge = "🔴 <b>وضع الدفاع والحذر:</b> رصد تصريف بيعي خفي وسحب سيولة من كبار المتداولين"
-            golden_advice = "احذر من الشراء عند القمم! رادارات السيولة ترصد مصائد للمضاربين الصغار. احتفظ بالكاش وراقب مناطق الخطر."
+        # Determine humanized verdict & advice precisely from Cortex Regime & Contradiction Engine
+        active_contradictions = cortex.get("active_contradictions", []) if cortex else []
+        has_contradiction = bool(active_contradictions) or (cortex_regime == "TRANSITION" and trust_score < 50)
+
+        if cortex_regime == "BREAKDOWN":
+            verdict_badge = "🔴 <b>وضع الانهيار والتصريف:</b> كسر هيكلي حاد وتصريف بيعي صريح يستوجب تفعيل الوقف"
+            golden_advice = "السوق في مسار هابط حقيقي، لا تحاول اصطياد القيعان الساقطة، التزم بالكاش الكامل."
+        elif cortex_regime == "EXHAUSTION":
+            verdict_badge = "🟠 <b>استنفاد الصعود في القمة:</b> صعود يفتقر للوقود مع رصد فخاخ امتصاص للمشترين"
+            golden_advice = "احذر من الشراء عند القمم! السعر يرتفع بضعف وسيولة الحيتان تتوقف عن الدعم."
+        elif cortex_regime == "TRANSITION":
+            if has_contradiction:
+                verdict_badge = "🟡 <b>تضارب مؤشرات وحذر:</b> صعود معزول وتعارض بين شراء الحيتان وضعف السوق العام"
+                golden_advice = "تضارب صريح بين المؤشرات: الحوت يشتري في البيتكوين بمفرده بينما باقي السوق راكد. قلّص مخاطرك وانتظر تأكيد الاتجاه."
+            else:
+                verdict_badge = "🟡 <b>مرحلة انتقالية وإعادة تقييم:</b> السوق يختبر مناطقه المفصلية دون اتجاه حاسم"
+                golden_advice = "السوق في منطقة اختبار، لا تفرط في الرافعة المالية، والتزم بمستويات الأمان والخطر الرقمية."
+        elif cortex_regime in ["EXPANSION", "BUILDING"] and trust_score >= 50:
+            verdict_badge = "🟢 <b>إشارة إيجابية مؤكدة:</b> تجميع حيتان وصعود مدعوم بالسيولة والاتساع العام"
+            golden_advice = "تدفق السيولة يدعم الصعود بتوافق المؤشرات. التزم بإدارة المحفظة وضع وقفك أسفل الدعم القريب."
         else:
-            verdict_badge = "🟡 <b>وضع المراقبة المشددة:</b> السوق في مرحلة تذبذب وإعادة تقييم (لا تطارد الشموع)"
-            golden_advice = "وفر سيولتك وتجنب الرافعة المالية المرتفعة. السوق يختبر مناطق حاسمة وأي كسر للدعم قد يسبب تصفية سريعة."
+            verdict_badge = "⚪ <b>حركة عرضية متماسكة:</b> تداول داخل النطاق بانتظار اختراق حاسم"
+            golden_advice = "السوق يتحرك بشكل عرضي متوازن، راقب كسر المقاومة أو الدعم لحسم المسار."
 
         # If not major session and no stance change, generate a SLEEK HUMANIZED FLASH PULSE
         if not should_send_full:

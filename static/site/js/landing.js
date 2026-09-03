@@ -66,18 +66,32 @@ async function fetchLiveData() {
             if (tickerConf && flow.confidence !== undefined) {
                 tickerConf.textContent = (flow.confidence * 100).toFixed(0) + '%';
             }
+        }
 
-            // Update live JSON display
+        // Fetch Level 4 Cortex Master Brain
+        const ctxRes = await fetch(`${API_BASE}/v1/intelligence/cortex?key=${DEMO_KEY}`);
+        if (ctxRes.ok) {
+            const cortex = await ctxRes.json();
             const liveJson = document.getElementById('live-json');
             if (liveJson) {
                 const displayObj = {
-                    symbol: flow.symbol || 'BTCUSDT',
-                    signal: flow.signal,
-                    confidence: flow.confidence,
-                    whale_intent: flow.whale_intent || flow.direction || 'N/A',
-                    delta_30s: flow.delta_30s || flow.net_delta || 'N/A',
-                    climate: flow.wiseman_climate || flow.climate || 'N/A',
-                    timestamp: new Date().toISOString()
+                    engine: cortex.engine || "Horus Cortex Symphony v3.0",
+                    regime_state: cortex.regime_state || "TRANSITION",
+                    trust_score: cortex.trust_score || 48.0,
+                    action_policy: {
+                        directive: cortex.action_policy?.directive || "Capital Preservation Lock",
+                        reversal_multiplier: cortex.action_policy?.reversal_multiplier ?? 0.5,
+                        ignition_allowed: cortex.action_policy?.ignition_allowed ?? false
+                    },
+                    execution_boundaries: {
+                        btc_price: cortex.execution_boundaries?.btc_price,
+                        invalidation_support: cortex.execution_boundaries?.invalidation_support,
+                        breakout_resistance: cortex.execution_boundaries?.breakout_resistance
+                    },
+                    market_vitals: {
+                        taker_ratio: cortex.market_vitals?.taker_ratio,
+                        global_ignition: cortex.market_vitals?.global_ignition
+                    }
                 };
                 liveJson.innerHTML = formatJSON(displayObj);
             }

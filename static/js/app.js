@@ -47,6 +47,13 @@ async function initGlobalIntelligence() {
         const apiKey = document.getElementById('rapid-key').value || 'horus-demo-key-2026';
         
         try {
+            // 0. Level 4 Cortex Symphony
+            const ctxRes = await fetch(`/v1/intelligence/cortex?key=${apiKey}`);
+            if (ctxRes.ok) {
+                const ctxData = await ctxRes.json();
+                updateCortexLiveBrain(ctxData);
+            }
+
             // 1. Climate
             const cRes = await fetch(`/v1/intelligence/climate?key=${apiKey}`);
             if (cRes.ok) {
@@ -75,6 +82,88 @@ async function initGlobalIntelligence() {
 
     poll();
     setInterval(poll, GLOBAL_INTEL_INTERVAL);
+}
+
+function updateCortexLiveBrain(data) {
+    if (!data) return;
+    const regime = data.regime_state || 'TRANSITION';
+    const direction = data.transition_direction || 'STABLE';
+    const trust = Math.round(data.trust_score || 0);
+    const policy = data.action_policy || {};
+    const boundaries = data.execution_boundaries || {};
+    const vitals = data.market_vitals || {};
+    const narrative = data.narrative || {};
+    const contradictions = data.active_contradictions || [];
+
+    // Pills & Badges
+    const regimePill = document.getElementById('cortex-regime-pill');
+    if (regimePill) {
+        regimePill.innerText = regime;
+        regimePill.className = 'cortex-pill ' + (regime.includes('BULL') ? 'badge-green' : regime.includes('BEAR') ? 'badge-red' : 'badge-gold');
+    }
+    const trustPill = document.getElementById('cortex-trust-pill');
+    if (trustPill) {
+        trustPill.innerText = `TRUST: ${trust}%`;
+        trustPill.className = 'cortex-pill ' + (trust >= 60 ? 'badge-green' : trust >= 40 ? 'badge-gold' : 'badge-red');
+    }
+
+    // Col 1: Consensus
+    const regimeVal = document.getElementById('cortex-regime-val');
+    if (regimeVal) regimeVal.innerText = regime;
+    const trajVal = document.getElementById('cortex-trajectory-val');
+    if (trajVal) trajVal.innerText = `Trajectory: ${direction}`;
+
+    // Col 2: Trust
+    const trustVal = document.getElementById('cortex-trust-val');
+    if (trustVal) trustVal.innerHTML = `${trust} <span style="font-size:0.9rem; color:var(--text-dim);">/ 100</span>`;
+    const takerVal = document.getElementById('cortex-taker-val');
+    if (takerVal) {
+        const tr = vitals.taker_ratio || 1.0;
+        takerVal.innerText = `Taker: ${tr.toFixed(2)}x (${tr >= 1.0 ? 'Whale Buy' : 'Whale Sell'})`;
+    }
+
+    // Col 3: Boundaries
+    const resVal = document.getElementById('cortex-res-val');
+    if (resVal && boundaries.breakout_resistance) resVal.innerText = `RES: $${Math.round(boundaries.breakout_resistance).toLocaleString()}`;
+    const supVal = document.getElementById('cortex-sup-val');
+    if (supVal && boundaries.invalidation_support) supVal.innerText = `SUP: $${Math.round(boundaries.invalidation_support).toLocaleString()}`;
+    const btcPrice = document.getElementById('cortex-btc-price');
+    if (btcPrice && boundaries.btc_price) btcPrice.innerText = `Ref BTC: $${boundaries.btc_price.toLocaleString()}`;
+
+    // Col 4: Action Policy
+    const dirVal = document.getElementById('cortex-directive-val');
+    if (dirVal) {
+        let shortDirective = 'CAPITAL PRESERVATION';
+        if (policy.directive) {
+            shortDirective = policy.directive.split(':')[0].trim();
+        }
+        dirVal.innerText = shortDirective.toUpperCase();
+    }
+    const multVal = document.getElementById('cortex-mult-val');
+    if (multVal) {
+        multVal.innerText = `Ignition: ${policy.ignition_multiplier || 0}x · Reversal: ${policy.reversal_multiplier || 0}x`;
+    }
+
+    // Radar Banner
+    const radarMsg = document.getElementById('cortex-contradiction-msg');
+    const actionTag = document.getElementById('cortex-action-tag');
+    if (radarMsg) {
+        if (contradictions.length > 0) {
+            radarMsg.innerText = contradictions.join(' | ');
+            if (actionTag) {
+                actionTag.innerText = 'CONTRADICTION DETECTED';
+                actionTag.style.background = 'rgba(239, 68, 68, 0.2)';
+                actionTag.style.color = '#fca5a5';
+            }
+        } else if (narrative.human_verdict) {
+            radarMsg.innerText = `${narrative.human_verdict} · ${narrative.summary_english || ''}`;
+            if (actionTag) {
+                actionTag.innerText = policy.ignition_allowed ? 'GO ACTIVE' : 'PRESERVE CAPITAL';
+                actionTag.style.background = policy.ignition_allowed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 179, 0, 0.2)';
+                actionTag.style.color = policy.ignition_allowed ? '#86efac' : '#fde047';
+            }
+        }
+    }
 }
 
 function updateGlobalClimate(data) {

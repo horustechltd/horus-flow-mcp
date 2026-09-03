@@ -104,7 +104,11 @@ app.include_router(router_billing, prefix="/api/billing", tags=["💳 Billing"])
 app.include_router(router_admin, prefix="/api/admin", tags=["🛡️ Admin"])
 
 # MCP Registry Domain Verification
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
+
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    return RedirectResponse(url="/site/")
 
 @app.get("/.well-known/mcp-registry-auth", response_class=PlainTextResponse, tags=["System"])
 async def mcp_registry_auth():

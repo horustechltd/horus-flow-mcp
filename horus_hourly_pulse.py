@@ -30,7 +30,7 @@ logger = logging.getLogger("HorusPulse")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8586135724:AAGgYBwMa6hWwyX0Q5yCMHd-B9moFPTIkR4")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7649770299:AAEW3nO-ko1a63tQZSzreNF7RpjYjInRCi4")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1245603051")
 FLOW_API_URL = os.getenv("FLOW_API_URL", "http://127.0.0.1:8011")
 FLOW_API_KEY = os.getenv("FLOW_API_KEY", "horus-trader-key-2026")

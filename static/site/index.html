@@ -181,17 +181,17 @@
             </p>
 
             <div class="grid-3 animate-in">
-                <div class="card" style="border-color: var(--accent-red); border-opacity: 0.3;">
+                <div class="card" style="border-color: rgba(255, 82, 82, 0.3);">
                     <div class="card-icon" style="background: rgba(255, 82, 82, 0.1);">❌</div>
                     <div class="card-title">RSI Says "Buy"</div>
                     <div class="card-desc">RSI drops below 30. Every course says "oversold = buy." You enter. Price drops another 8%. It was a trap.</div>
                 </div>
-                <div class="card" style="border-color: var(--accent-red); border-opacity: 0.3;">
+                <div class="card" style="border-color: rgba(255, 82, 82, 0.3);">
                     <div class="card-icon" style="background: rgba(255, 82, 82, 0.1);">❌</div>
                     <div class="card-title">Support "Holds"</div>
                     <div class="card-desc">A huge buy wall at $77,500 makes you feel safe. It's a spoof — the wall gets pulled the moment you enter long.</div>
                 </div>
-                <div class="card" style="border-color: var(--accent-green); border-opacity: 0.3;">
+                <div class="card" style="border-color: rgba(0, 230, 118, 0.3);">
                     <div class="card-icon" style="background: rgba(0, 230, 118, 0.1);">🦅</div>
                     <div class="card-title">Horus Saw It Coming</div>
                     <div class="card-desc">Horus detected INSTITUTIONAL_DISTRIBUTION 85 minutes before the drop. BID_WALL_TRAP at 5.8x. The "support" was fake.</div>
@@ -237,10 +237,10 @@
                     <div class="card-title">Cross-Exchange Flow</div>
                     <div class="card-desc">Spot vs. Futures divergence across Binance, OKX, Bybit. Detects when speculation leads or when real money drives.</div>
                 </div>
-                <div class="card">
+                <div class="card" style="border: 1px solid rgba(255, 179, 0, 0.4); background: rgba(255, 179, 0, 0.03);">
                     <div class="card-icon">🧠</div>
-                    <div class="card-title">Composite Intelligence</div>
-                    <div class="card-desc">All 7 layers fused into a single Verdict: BUY, SELL, or STAY_OUT. One number. One decision. Institutional conviction.</div>
+                    <div class="card-title" style="color: var(--gold-primary);">Level 4 Cortex Brain</div>
+                    <div class="card-desc">7 evidence families synthesized with a live Contradiction Engine. Delivers penalized trust scores, USD invalidation boundaries, and autonomous bot sizing multipliers.</div>
                 </div>
             </div>
         </div>
@@ -288,24 +288,24 @@
                     <span class="code-lang">Python</span>
 <pre><span class="code-keyword">import</span> requests
 
-r = requests.<span class="code-func">get</span>(<span class="code-string">"https://api.horusflow.io/v1/flow/crypto/BTCUSDT"</span>,
+r = requests.<span class="code-func">get</span>(<span class="code-string">"https://flow.horustek.pro/v1/intelligence/cortex"</span>,
     headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-key"</span>})
 
-signal = r.json()
-<span class="code-keyword">print</span>(signal[<span class="code-string">"signal"</span>])     <span class="code-comment"># WHALE_EXIT</span>
-<span class="code-keyword">print</span>(signal[<span class="code-string">"confidence"</span>]) <span class="code-comment"># 0.92</span></pre>
+cortex = r.json()
+<span class="code-keyword">print</span>(cortex[<span class="code-string">"regime_state"</span>])  <span class="code-comment"># TRANSITION</span>
+<span class="code-keyword">print</span>(cortex[<span class="code-string">"trust_score"</span>])   <span class="code-comment"># 48.0</span></pre>
                 </div>
 
                 <div class="code-block" style="text-align: left;">
                     <span class="code-lang">JavaScript</span>
 <pre><span class="code-keyword">const</span> res = <span class="code-keyword">await</span> <span class="code-func">fetch</span>(
-  <span class="code-string">"https://api.horusflow.io/v1/flow/crypto/BTCUSDT"</span>,
+  <span class="code-string">"https://flow.horustek.pro/v1/intelligence/cortex"</span>,
   { headers: { <span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-key"</span> }}
 );
 
 <span class="code-keyword">const</span> data = <span class="code-keyword">await</span> res.<span class="code-func">json</span>();
-console.<span class="code-func">log</span>(data.<span class="code-gold">signal</span>);     <span class="code-comment">// WHALE_EXIT</span>
-console.<span class="code-func">log</span>(data.<span class="code-gold">confidence</span>); <span class="code-comment">// 0.92</span></pre>
+console.<span class="code-func">log</span>(data.<span class="code-gold">regime_state</span>); <span class="code-comment">// TRANSITION</span>
+console.<span class="code-func">log</span>(data.<span class="code-gold">trust_score</span>);  <span class="code-comment">// 48.0</span></pre>
                 </div>
             </div>
         </div>

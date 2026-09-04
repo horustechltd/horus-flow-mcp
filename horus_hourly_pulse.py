@@ -366,26 +366,33 @@ class HorusHourlyPulse:
 
         if cortex_regime == "BREAKDOWN":
             verdict_badge = "🔴 <b>وضع الانهيار والتصريف:</b> كسر هيكلي حاد وتصريف بيعي صريح يستوجب تفعيل الوقف"
-            golden_advice = "السوق في مسار هابط حقيقي، لا تحاول اصطياد القيعان الساقطة، التزم بالكاش الكامل."
+            advice_holders = "فعّل وقف الخسارة فوراً واخرج بأقل الأضرار، لا تأمل في ارتداد وهمي."
+            advice_cash = "ابقَ في الكاش 100%، ولا تحاول اصطياد القيعان الساقطة حتى تستقر السيولة."
         elif cortex_regime == "EXHAUSTION":
             verdict_badge = "🟠 <b>استنفاد الصعود في القمة:</b> صعود يفتقر للوقود مع رصد فخاخ امتصاص للمشترين"
-            golden_advice = "احذر من الشراء عند القمم! السعر يرتفع بضعف وسيولة الحيتان تتوقف عن الدعم."
+            advice_holders = "اجنِ جزءاً كبيراً من أرباحك وارفع وقفك لنقطة الدخول؛ السعر يواجه جدران تصريف."
+            advice_cash = "احذر من الشراء عند القمم! السعر يرتفع بضعف وسيولة الحيتان تتوقف عن الدعم."
         elif cortex_regime == "HEALTHY_CONSOLIDATION":
             verdict_badge = "⚪ <b>تماسك صحي واستيعاب للمكاسب:</b> ثبات في مناطق عليا بعد موجة الصعود دون بوادر تصريف"
-            golden_advice = "السعر يتنفس في قمم جديدة ويستوعب الصعود. احتفظ بمكاسبك وارفع وقف خسارتك أسفل الدعم الرقمي."
+            advice_holders = "احتفظ بمكاسبك وارفع وقف خسارتك أسفل الدعم الهيكلي القريب."
+            advice_cash = "لا تطارد الشموع في قمة النطاق! انتظر إما اختراق حاجز الأمان أو اقتنص الارتداد عند مناطق الدعم."
         elif cortex_regime in ["EXPANSION", "BUILDING"] and trust_score >= 50:
             verdict_badge = "🟢 <b>إشارة إيجابية مؤكدة:</b> تجميع حيتان وصعود مدعوم بالسيولة والاتساع العام"
-            golden_advice = "تدفق السيولة يدعم الصعود بتوافق المؤشرات. التزم بإدارة المحفظة وضع وقفك أسفل الدعم القريب."
+            advice_holders = "دع أرباحك تمتد مع رفع الوقف المتحرك لتأمين المكاسب مع كل قمة جديدة."
+            advice_cash = "فرصة للدخول مع الارتدادات السريعة (Pullbacks) بوقف خسارة محدد أسفل أقرب قاع."
         elif cortex_regime == "TRANSITION":
             if has_contradiction:
                 verdict_badge = "🟡 <b>صعود قيادي للبيتكوين:</b> الحيتان يركزون في BTC مع ترقب وحذر في باقي السوق"
-                golden_advice = "صعود بقيادة البيتكوين بمفرده بينما باقي السوق راكد. ركز على قائد السوق وقلّص المخاطرة في الألتكوين."
+                advice_holders = "ركز على البيتكوين وخفف مراكزك في الألتكوين الضعيف لحين وضوح اتساع السوق."
+                advice_cash = "التزم بالتمركز في قائد السوق فقط (BTC)، وتجنب الدخول في العملات البديلة حتى تؤكد السيولة."
             else:
                 verdict_badge = "🟡 <b>مرحلة انتقالية وإعادة تقييم:</b> السوق يختبر مناطقه المفصلية دون اتجاه حاسم"
-                golden_advice = "السوق في منطقة اختبار، لا تفرط في الرافعة المالية، والتزم بمستويات الأمان والخطر الرقمية."
+                advice_holders = "قلّص أحجام العقود والتزم بمستويات الدعم والخطر الرقمية بدقة."
+                advice_cash = "التزم بالكاش والمراقبة؛ الدخول الآن عالي المخاطر بانتظار إشارة اختراق واضحة."
         else:
             verdict_badge = "⚪ <b>حركة عرضية متماسكة:</b> تداول داخل النطاق بانتظار اختراق حاسم"
-            golden_advice = "السوق يتحرك بشكل عرضي متوازن، راقب كسر المقاومة أو الدعم لحسم المسار."
+            advice_holders = "تداول النطاق بحذر وضع وقفك خارج حدود التذبذب."
+            advice_cash = "انتظر كسر النطاق إما صعوداً فوق المقاومة أو هبوطاً قرب الدعم."
 
         # If not major session and no stance change, generate a SLEEK HUMANIZED FLASH PULSE
         if not should_send_full:
@@ -397,7 +404,9 @@ class HorusHourlyPulse:
             flash += f"🎯 <b>أرقام الحسم للمحفظة:</b>\n"
             flash += f"🛑 <b>جرس الخطر:</b> <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code>\n"
             flash += f"🚀 <b>بوابة الأمان:</b> <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code>\n\n"
-            flash += f"💡 <b>نصيحة حورس لمحفظتك:</b>\n<i>«{golden_advice}»</i>\n"
+            flash += f"💡 <b>بوصلة القرار لمحفظتك:</b>\n"
+            flash += f"• 🟢 <b>للداخلين:</b> <i>{advice_holders}</i>\n"
+            flash += f"• 🟡 <b>للكاش:</b> <i>{advice_cash}</i>\n"
             flash += f"━━━━━━━━━━━━━━━━━━━━\n"
             flash += f"📊 <b>لمتابعة رادار السيولة المباشر والداشبورد:</b>\n👉 https://flow.horustek.pro/dash/"
             return flash
@@ -430,10 +439,13 @@ class HorusHourlyPulse:
 
         # SECTION 3: DECISION MAP & BOUNDARIES
         report += f"🎯 <b>أرقام المعركة (خريطة الدخول والخروج):</b>\n"
-        report += f"🟢 <b>شرط استمرار الإيجابية وبدء الشراء:</b>\n"
+        report += f"🟢 <b>شرط استمرار الإيجابية وشراء الاختراق:</b>\n"
         report += f"  • اختراق حاجز الأمان عند <code>${btc_safe:,.0f} ({btc_safe_dist:+.1f}%)</code> والإغلاق فوقه بثبات.\n"
         report += f"🔴 <b>جرس الإنذار ووقف الخسارة:</b>\n"
-        report += f"  • كسر الدعم الهيكلي عند <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code> يفتح الباب لمزيد من الهبوط.\n\n"
+        report += f"  • كسر الدعم الهيكلي عند <code>${btc_danger:,.0f} ({btc_danger_dist:+.1f}%)</code> يفتح الباب لمزيد من الهبوط.\n"
+        dip_roof = btc_price * 0.985
+        report += f"🔵 <b>منطقة اقتناص الارتداد لمن في الكاش (Buy The Dip):</b>\n"
+        report += f"  • التمركز الآمن بين <code>${btc_danger:,.0f}</code> و <code>${dip_roof:,.0f}</code> بشرط ظهور جدار طلبات حقيقي.\n\n"
 
         # SECTION 4: LIVE ASSET TELEMETRY (CLEAN ARABIC)
         report += f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -478,8 +490,9 @@ class HorusHourlyPulse:
 
         # SECTION 5: GOLDEN ADVICE & CTA
         report += f"\n━━━━━━━━━━━━━━━━━━━━\n"
-        report += f"💡 <b>نصيحة قناص الألفا لمحفظتك:</b>\n"
-        report += f"<i>«{golden_advice}»</i>\n"
+        report += f"💡 <b>بوصلة قناص الألفا لمحفظتك:</b>\n"
+        report += f"• 🟢 <b>لمن يملك صفقات (داخل السوق):</b>\n  <i>«{advice_holders}»</i>\n"
+        report += f"• 🟡 <b>لمن في الكاش (يبحث عن دخول):</b>\n  <i>«{advice_cash}»</i>\n"
         report += f"━━━━━━━━━━━━━━━━━━━━\n"
         report += f"📊 <b>لمتابعة رادار السيولة المباشر والداشبورد:</b>\n"
         report += f"👉 https://flow.horustek.pro/dash/\n"

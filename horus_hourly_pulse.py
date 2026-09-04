@@ -370,16 +370,19 @@ class HorusHourlyPulse:
         elif cortex_regime == "EXHAUSTION":
             verdict_badge = "🟠 <b>استنفاد الصعود في القمة:</b> صعود يفتقر للوقود مع رصد فخاخ امتصاص للمشترين"
             golden_advice = "احذر من الشراء عند القمم! السعر يرتفع بضعف وسيولة الحيتان تتوقف عن الدعم."
-        elif cortex_regime == "TRANSITION":
-            if has_contradiction:
-                verdict_badge = "🟡 <b>تضارب مؤشرات وحذر:</b> صعود معزول وتعارض بين شراء الحيتان وضعف السوق العام"
-                golden_advice = "تضارب صريح بين المؤشرات: الحوت يشتري في البيتكوين بمفرده بينما باقي السوق راكد. قلّص مخاطرك وانتظر تأكيد الاتجاه."
-            else:
-                verdict_badge = "🟡 <b>مرحلة انتقالية وإعادة تقييم:</b> السوق يختبر مناطقه المفصلية دون اتجاه حاسم"
-                golden_advice = "السوق في منطقة اختبار، لا تفرط في الرافعة المالية، والتزم بمستويات الأمان والخطر الرقمية."
+        elif cortex_regime == "HEALTHY_CONSOLIDATION":
+            verdict_badge = "⚪ <b>تماسك صحي واستيعاب للمكاسب:</b> ثبات في مناطق عليا بعد موجة الصعود دون بوادر تصريف"
+            golden_advice = "السعر يتنفس في قمم جديدة ويستوعب الصعود. احتفظ بمكاسبك وارفع وقف خسارتك أسفل الدعم الرقمي."
         elif cortex_regime in ["EXPANSION", "BUILDING"] and trust_score >= 50:
             verdict_badge = "🟢 <b>إشارة إيجابية مؤكدة:</b> تجميع حيتان وصعود مدعوم بالسيولة والاتساع العام"
             golden_advice = "تدفق السيولة يدعم الصعود بتوافق المؤشرات. التزم بإدارة المحفظة وضع وقفك أسفل الدعم القريب."
+        elif cortex_regime == "TRANSITION":
+            if has_contradiction:
+                verdict_badge = "🟡 <b>صعود قيادي للبيتكوين:</b> الحيتان يركزون في BTC مع ترقب وحذر في باقي السوق"
+                golden_advice = "صعود بقيادة البيتكوين بمفرده بينما باقي السوق راكد. ركز على قائد السوق وقلّص المخاطرة في الألتكوين."
+            else:
+                verdict_badge = "🟡 <b>مرحلة انتقالية وإعادة تقييم:</b> السوق يختبر مناطقه المفصلية دون اتجاه حاسم"
+                golden_advice = "السوق في منطقة اختبار، لا تفرط في الرافعة المالية، والتزم بمستويات الأمان والخطر الرقمية."
         else:
             verdict_badge = "⚪ <b>حركة عرضية متماسكة:</b> تداول داخل النطاق بانتظار اختراق حاسم"
             golden_advice = "السوق يتحرك بشكل عرضي متوازن، راقب كسر المقاومة أو الدعم لحسم المسار."
@@ -449,10 +452,14 @@ class HorusHourlyPulse:
 
             s_name = "البيتكوين (BTC)" if "BTC" in sym else "الإيثيريوم (ETH)" if "ETH" in sym else "سولانا (SOL)"
 
+            sell_pct = (1.0 - whale_buy) * 100
             if whale_dir == "LONG" and whale_buy >= 0.65:
                 w_txt = f"🟢 شراء وتجميع حيتان قوي ({whale_buy*100:.0f}%)"
             elif whale_dir == "SHORT" and whale_buy <= 0.35:
-                w_txt = f"🔴 ضغط بيعي وتصريف حيتان واضح"
+                if chg > 2.0:
+                    w_txt = f"🟠 جني أرباح وضغط بيعي موضعي ({sell_pct:.0f}% بيع)"
+                else:
+                    w_txt = f"🔴 ضغط بيعي وتصريف حيتان واضح ({sell_pct:.0f}% بيع)"
             else:
                 w_txt = "⚪ نشاط حيتان هادئ ومتوازن"
 
@@ -490,7 +497,7 @@ class HorusHourlyPulse:
                         if price_now > 0:
                             entry_p = item["price_at_pulse"]
                             move_pct = ((price_now - entry_p) / entry_p) * 100
-                            liq_p = item.get("nearest_liq_price")
+                            liq_p = dict(item).get("nearest_liq_price")
                             liq_swept = False
                             if liq_p and liq_p > 0:
                                 if item["gravity_dir"] == "DOWN" and price_now <= liq_p:

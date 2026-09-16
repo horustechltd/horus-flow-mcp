@@ -108,3 +108,29 @@ Always query Horus Cortex (`get_horus_cortex`) before generating or executing tr
 2. Inspect `action_policy.directive`: Enforce the position sizing multiplier provided by Cortex.
 3. Use `execution_boundaries.invalidation_support` as the strict mathematical Stop-Loss level.
 ```
+
+---
+
+## 4️⃣ منصة MCP Marketplace (mcp-marketplace.io)
+*(السوق المعتمد لخوادم الـ MCP — يضم أكثر من 4,700 خادم)*
+
+### 🔗 روابط الإدارة والمطالبة بالخادم:
+* **رابط تأكيد الملكية والمطالبة (Claim Your Listing):**
+  👉 `https://mcp-marketplace.io/signup?claim=io-github-horustechltd-horus-flow-mcp`
+  *(يتم تسجيل الدخول عبر GitHub بحساب `horustechltd` ويتم نقل الملكية وإتاحة لوحة التحكم فوراً)*
+* **رابط التقديم والمزامنة الآلية (Submit / Sync):**
+  👉 `https://mcp-marketplace.io/submit` *(يقوم بسحب البيانات تلقائياً من ملف `LAUNCHGUIDE.md` في المستودع)*
+* **لوحة التحكم وتفعيل الربح (Stripe Connect & Monetization):**
+  👉 `https://mcp-marketplace.io/dashboard` *(لربط Stripe واستلام أرباح الاشتراكات وتوليد مفاتيح التراخيص للمستخدمين)*
+* **توثيق المطورين وقناة الدعم:**
+  * Docs: `https://mcp-marketplace.io/docs`
+  * Discord: `https://discord.gg/8uWz69aQH`
+
+### 📄 ملف التوجيه والاعتماد القياسي (`LAUNCHGUIDE.md`):
+تم إنشاء وحفظ الملف في جذر المستودع (`/root/horus_flow_api/LAUNCHGUIDE.md`) وفق الشروط الصارمة للمنصة:
+* **Tagline:** `Cognitive market brain for autonomous AI trading agents (Orderflow physics & Contradiction Engine)` (99 حرفاً - الحد الأقصى 100).
+* **Category:** `Finance`
+* **Env Vars:** `RAPIDAPI_KEY` (Required), `RAPIDAPI_HOST` (Optional).
+* **Health Check URL:** `https://flow.horustek.pro/health`
+* **Tools & Prompts:** يغطي كافة أدوات المنظومة الـ 11 بالكامل.
+

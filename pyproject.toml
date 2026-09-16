@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "horus-flow-mcp"
-version = "1.0.6"
-description = "Real-time orderflow intelligence for crypto & equities — whale detection, spoofing alerts, liquidation heatmaps, smart money divergence, block trades, and AI composite scoring"
+version = "3.0.0"
+description = "Cognitive Market Brain for Autonomous AI Trading Agents (Orderflow Physics, Liquidation Gravity & Contradiction Engine)"
 readme = "README.md"
 authors = [
   { name = "Horus Tech Ltd", email = "admin@horustek.pro" }
@@ -22,11 +22,8 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-  "mcp>=1.0.0",
-  "httpx>=0.27.0",
-  "fastapi>=0.110.0",
-  "uvicorn>=0.29.0",
-  "requests>=2.31.0",
+  "mcp>=1.27.0",
+  "httpx>=0.28.0",
 ]
 
 [project.urls]

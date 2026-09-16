@@ -134,3 +134,11 @@ Always query Horus Cortex (`get_horus_cortex`) before generating or executing tr
 * **Health Check URL:** `https://flow.horustek.pro/health`
 * **Tools & Prompts:** يغطي كافة أدوات المنظومة الـ 11 بالكامل.
 
+### 📊 بطاقة الخادم المعتمدة في حسابك:
+* **اسم الخادم:** `Horus Flow & Cortex Intelligence`
+* **المعرّف الداخلي:** `2e95c731-f4bb-4cf6-ab2c-a3bb9a4f011e`
+* **رابط التعديل المباشر في الداشبورد:**
+  👉 `https://mcp-marketplace.io/dashboard/edit/2e95c731-f4bb-4cf6-ab2c-a3bb9a4f011e`
+* **الحالة الحالية:** `Pending Review` *(الفحص الآلي للأمان والامتثال جارٍ الآن)*
+
+

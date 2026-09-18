@@ -21,6 +21,10 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 import aiohttp
+from dotenv import load_dotenv
+
+# Load local .env if present
+load_dotenv(Path(__file__).parent / ".env")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,8 +34,8 @@ logger = logging.getLogger("HorusPulse")
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7649770299:AAEW3nO-ko1a63tQZSzreNF7RpjYjInRCi4")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1245603051")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 FLOW_API_URL = os.getenv("FLOW_API_URL", "http://127.0.0.1:8011")
 FLOW_API_KEY = os.getenv("FLOW_API_KEY", "horus-trader-key-2026")
 

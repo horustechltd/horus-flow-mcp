@@ -11,16 +11,19 @@ import asyncio
 import aiohttp
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / ".env")
 
 from qve_database import qve_db
 
 # ══════════════════════════════════════════════
 # Configuration
 # ══════════════════════════════════════════════
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "7649770299:AAEW3nO-ko1a63tQZSzreNF7RpjYjInRCi4")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1245603051")
-API_KEY = "horus-demo-key-2026"
-BASE_URL = "http://127.0.0.1:8011"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+API_KEY = os.getenv("FLOW_API_KEY", "horus-demo-key-2026")
+BASE_URL = os.getenv("FLOW_API_URL", "http://127.0.0.1:8011")
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]

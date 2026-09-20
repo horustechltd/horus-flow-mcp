@@ -7,6 +7,7 @@ import logging
 import json
 import os
 import time
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +114,13 @@ async def root_redirect():
 @app.get("/.well-known/mcp-registry-auth", response_class=PlainTextResponse, tags=["System"])
 async def mcp_registry_auth():
     return "v=MCPv1; k=ed25519; p=nWYLm+WB0QKWTVhGQtHDJoNL4eraIJjq56Wjrfj6Vs0="
+
+@app.get("/README.md", response_class=PlainTextResponse, tags=["System"])
+async def serve_readme():
+    readme_path = Path(__file__).resolve().parent.parent / "README.md"
+    if readme_path.exists():
+        return readme_path.read_text(encoding="utf-8")
+    return PlainTextResponse("Not found", status_code=404)
 
 # Mount Brand Website (Landing, Pricing, Docs)
 app.mount("/site", StaticFiles(directory="static/site", html=True), name="brand-site")

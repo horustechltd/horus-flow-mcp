@@ -5,7 +5,7 @@
   <p>
     <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp"><img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/card.svg" alt="Glama Verified"></a>
     <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp"><img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/score.svg" alt="Glama Score"></a>
-    <a href="https://aiagentslisting.com/mcp/horus-flow-mcp"><img src="https://aiagentslisting.com/horus-flow-mcp/badge.svg?claim=6dc7ef10b0e16af60082b421d9e492be" alt="Horus Flow Mcp on AI Agents Listing"></a>
+    <a href="https://aiagentslisting.com/mcp/horus-flow-mcp"><img src="https://aiagentslisting.com/horus-flow-mcp/badge.svg" alt="AI Agents Listing Verified"></a>
   </p>
 
   <p>
@@ -20,8 +20,6 @@
     <strong>Don't let your AI trading agents trade on lagging candlestick echoes. Give them the whale's eyes and an institutional cognitive mind.</strong>
   </p>
 </div>
-
-[![Horus Flow Mcp on AI Agents Listing](https://aiagentslisting.com/horus-flow-mcp/badge.svg?claim=6dc7ef10b0e16af60082b421d9e492be)](https://aiagentslisting.com/mcp/horus-flow-mcp)
 
 ---
 

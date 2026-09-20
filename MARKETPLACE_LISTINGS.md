@@ -158,3 +158,4 @@ Always query Horus Cortex (`get_horus_cortex`) before generating or executing tr
 * **المزايا المكتسبة:**
   * رابط Do-Follow Backlink لتحسين سيو موقع `flow.horustek.pro`.
   * شارة توثيق رسمية (Verified Listing) على الدليل.
+* **الحالة:** ✅ **Verified & Owned** *(تم إثبات الملكية وربط السيرفر بحسابك وتفعيل الـ Do-Follow)*

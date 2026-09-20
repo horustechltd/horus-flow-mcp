@@ -5,6 +5,7 @@
   <p>
     <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp"><img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/card.svg" alt="Glama Verified"></a>
     <a href="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp"><img src="https://glama.ai/mcp/servers/horustechltd/horus-flow-mcp/badges/score.svg" alt="Glama Score"></a>
+    <a href="https://aiagentslisting.com/mcp/horus-flow-mcp"><img src="https://aiagentslisting.com/horus-flow-mcp/badge.svg" alt="AI Agents Listing"></a>
   </p>
 
   <p>

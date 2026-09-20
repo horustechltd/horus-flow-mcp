@@ -141,4 +141,20 @@ Always query Horus Cortex (`get_horus_cortex`) before generating or executing tr
   👉 `https://mcp-marketplace.io/dashboard/edit/2e95c731-f4bb-4cf6-ab2c-a3bb9a4f011e`
 * **الحالة الحالية:** `Pending Review` *(الفحص الآلي للأمان والامتثال جارٍ الآن)*
 
+---
 
+## 3️⃣ منصة ودليل AI Agents Listing (`aiagentslisting.com`)
+*(دليل عالمي متخصص في عملاء الذكاء الاصطناعي وخوادم الـ MCP)*
+
+### 🔗 الروابط الرسمية:
+* **صفحة السيرفر الحية في الدليل:**
+  👉 `https://aiagentslisting.com/mcp/horus-flow-mcp`
+* **رابط التحقق والتوثيق المباشر (Verification Link):**
+  👉 `https://aiagentslisting.com/verify/horus-flow-mcp?token=jUS34IgT_45QfIHQ_lc_zr0y2caYr8Kp`
+* **كود الشارة (Badge) المضاف في `README.md`:**
+  ```markdown
+  [![AI Agents Listing](https://aiagentslisting.com/horus-flow-mcp/badge.svg)](https://aiagentslisting.com/mcp/horus-flow-mcp)
+  ```
+* **المزايا المكتسبة:**
+  * رابط Do-Follow Backlink لتحسين سيو موقع `flow.horustek.pro`.
+  * شارة توثيق رسمية (Verified Listing) على الدليل.

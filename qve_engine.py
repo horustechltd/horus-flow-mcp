@@ -9,11 +9,15 @@ import json
 import uuid
 import asyncio
 import aiohttp
+import logging
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("HorusQVE")
 
 from qve_database import qve_db
 

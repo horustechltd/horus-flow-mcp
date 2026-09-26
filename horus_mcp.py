@@ -21,7 +21,19 @@ import sys
 import json
 import argparse
 import httpx
-from mcp.server.fastmcp import FastMCP
+
+try:
+    # mcp v1.x standard import
+    from mcp.server.fastmcp import FastMCP
+except (ImportError, ModuleNotFoundError):
+    try:
+        # mcp v2.x restructured import
+        from mcp.server.mcpserver import MCPServer as FastMCP
+    except (ImportError, ModuleNotFoundError):
+        try:
+            from mcp.server.fastmcp.server import FastMCP
+        except (ImportError, ModuleNotFoundError):
+            from mcp.server import FastMCP
 
 # ─── Parse args early ─────────────────────────────────────
 _parser = argparse.ArgumentParser(description="Horus Flow MCP Server")

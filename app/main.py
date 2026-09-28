@@ -28,6 +28,7 @@ from app.feeds.binance_futures_ws import futures_manager
 from app.redis_client import redis_manager
 from app.database import log_usage
 from app.wiseman_publisher import wiseman_publisher_loop
+from app.ignition_publisher import ignition_publisher_loop
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -42,9 +43,12 @@ async def lifespan(app: FastAPI):
     alp_task = asyncio.create_task(start_alpaca_ws())
     futures_task = asyncio.create_task(futures_manager.start())
     wiseman_task = asyncio.create_task(wiseman_publisher_loop(redis_manager))
+    ignition_task = asyncio.create_task(ignition_publisher_loop(redis_manager))
     yield
     # Shutdown
     logger.info("Shutting down resources...")
+    wiseman_task.cancel()
+    ignition_task.cancel()
     await redis_manager.disconnect()
     ws_manager.stop()
     alpaca_ws_manager.stop()

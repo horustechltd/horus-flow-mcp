@@ -12,7 +12,8 @@
   },
   "servers": [
     {
-      "url": "https://flow.horustek.pro"
+      "url": "http://45.151.122.96:8011",
+      "description": "RapidAPI gateway target: direct server access. Do not point RapidAPI at the Cloudflare domain; Cloudflare blocks RapidAPI's servers."
     }
   ],
   "tags": [

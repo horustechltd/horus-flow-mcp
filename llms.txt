@@ -4,8 +4,9 @@
 
 ## Connect
 - Remote MCP (Streamable HTTP): https://flow.horustek.pro/mcp
-- Auth: header `X-API-Key: <key>` or `Authorization: Bearer <key>`. Without a key: free tier.
-- REST base: https://flow.horustek.pro  (OpenAPI: https://flow.horustek.pro/api/openapi.json)
+- Auth: RapidAPI subscribers send `X-RapidAPI-Key: <key>` (their RapidAPI plan applies). Horus keys: `X-API-Key: <key>` or `Authorization: Bearer <key>`. Without a key: free tier.
+- Subscribe: https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence
+- REST via RapidAPI: https://horus-flow-intelligence.p.rapidapi.com ; direct REST base: https://flow.horustek.pro  (OpenAPI: https://flow.horustek.pro/api/openapi.json)
 - Status: https://flow.horustek.pro/v1/status
 
 ## What it provides

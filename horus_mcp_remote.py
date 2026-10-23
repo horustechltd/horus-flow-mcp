@@ -3,7 +3,8 @@
 Horus Flow — Remote MCP server (Streamable HTTP)
 ================================================
 Endpoint:  https://flow.horustek.pro/mcp
-Auth:      send your Horus key as `X-API-Key: <key>` or `Authorization: Bearer <key>`.
+Auth:      RapidAPI subscribers send `X-RapidAPI-Key: <key>` (calls go through RapidAPI and its plans).
+           Horus keys go as `X-API-Key: <key>` or `Authorization: Bearer <key>`.
            Without a key the server answers on the free tier (BTCUSDT and ETHUSDT flow,
            public track record, US session context).
 
@@ -94,11 +95,29 @@ def _key_from(ctx: Optional[Context]) -> str:
     return _caller_key.get() or ANON_KEY
 
 
+RAPIDAPI_HOST = "horus-flow-intelligence.p.rapidapi.com"
+RAPIDAPI_LISTING = "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence"
+
+
+def _rapidapi_key_from(ctx: Optional[Context]) -> str:
+    """RapidAPI subscribers send their RapidAPI key; we route their calls through RapidAPI
+    so their plan and billing stay on RapidAPI."""
+    try:
+        req = ctx.request_context.request if ctx else None
+        return (req.headers.get("x-rapidapi-key") or "").strip() if req is not None else ""
+    except Exception:
+        return ""
+
+
 async def _get(ctx: Optional[Context], path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    key = _key_from(ctx)
-    headers = {"X-API-Key": key} if key else {}
-    async with httpx.AsyncClient(timeout=15.0) as c:
-        r = await c.get(f"{API}{path}", params={k: v for k, v in (params or {}).items() if v is not None}, headers=headers)
+    rapid_key = _rapidapi_key_from(ctx)
+    if rapid_key:
+        base, headers = f"https://{RAPIDAPI_HOST}", {"x-rapidapi-key": rapid_key, "x-rapidapi-host": RAPIDAPI_HOST}
+    else:
+        key = _key_from(ctx)
+        base, headers = API, ({"X-API-Key": key} if key else {})
+    async with httpx.AsyncClient(timeout=20.0) as c:
+        r = await c.get(f"{base}{path}", params={k: v for k, v in (params or {}).items() if v is not None}, headers=headers)
     try:
         body = r.json()
     except ValueError:
@@ -107,9 +126,12 @@ async def _get(ctx: Optional[Context], path: str, params: Optional[Dict[str, Any
         return body
     detail = body.get("detail", body) if isinstance(body, dict) else body
     out = {"error": True, "status": r.status_code, "detail": detail}
-    if r.status_code == 403:
-        out["hint"] = ("Your plan does not include this. Without a key you are on the free tier. "
-                       "Plans and keys: https://flow.horustek.pro")
+    if r.status_code in (401, 403):
+        out["hint"] = ("Your plan does not include this, or the key is not valid. Without a key you are on the free tier. "
+                       f"Subscribe on RapidAPI ({RAPIDAPI_LISTING}) and send your key as the X-RapidAPI-Key header, "
+                       "or use a Horus key as X-API-Key.")
+    elif r.status_code == 404 and rapid_key:
+        out["hint"] = "This endpoint is not enabled on the RapidAPI listing yet."
     elif r.status_code == 503:
         out["hint"] = "The upstream data is stale or loading; Horus refuses to serve old data. Retry in a minute."
     elif r.status_code == 202:
@@ -320,11 +342,13 @@ INFO = {
     "name": "Horus Flow MCP server",
     "transport": "streamable-http",
     "endpoint": "https://flow.horustek.pro/mcp",
-    "auth": "Optional header X-API-Key: <key> or Authorization: Bearer <key>. Without a key the free tier applies.",
+    "auth": ("RapidAPI subscribers: header X-RapidAPI-Key: <your RapidAPI key>. Horus keys: X-API-Key or "
+             "Authorization: Bearer. Without a key the free tier applies."),
+    "subscribe": "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",
     "connect": {
-        "claude_code": "claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header \"X-API-Key: YOUR_KEY\"",
+        "claude_code": "claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header \"X-RapidAPI-Key: YOUR_RAPIDAPI_KEY\"",
         "mcp_json": {"mcpServers": {"horus-flow": {"type": "http", "url": "https://flow.horustek.pro/mcp",
-                                                    "headers": {"X-API-Key": "YOUR_KEY"}}}},
+                                                    "headers": {"X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY"}}}},
     },
     "tools": ["get_crypto_flow", "get_flow_history", "get_market_overview", "get_derivatives", "get_cortex",
               "get_ignitions", "get_track_record", "get_signal_ledger", "get_recent_events", "get_us_market_session",
@@ -349,14 +373,16 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}a{color:inherit}ul{
 <h1>Horus Flow MCP server</h1>
 <p>This address speaks the Model Context Protocol (Streamable HTTP). Add it to an MCP client; a browser cannot use it directly.</p>
 <section><h2>Endpoint</h2><pre><code>https://flow.horustek.pro/mcp</code></pre>
-<p>Optional header <code>X-API-Key: YOUR_KEY</code> or <code>Authorization: Bearer YOUR_KEY</code>. Without a key you get the free tier.</p></section>
-<section><h2>Claude Code</h2><pre><code>claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-API-Key: YOUR_KEY"</code></pre></section>
+<p>RapidAPI subscribers: add the header <code>X-RapidAPI-Key: YOUR_RAPIDAPI_KEY</code>. Your RapidAPI plan applies.
+Horus keys: <code>X-API-Key: YOUR_KEY</code>. Without a key you get the free tier.
+<a href="https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence">Subscribe on RapidAPI</a>.</p></section>
+<section><h2>Claude Code</h2><pre><code>claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY"</code></pre></section>
 <section><h2>Any MCP client</h2><pre><code>{
   "mcpServers": {
     "horus-flow": {
       "type": "http",
       "url": "https://flow.horustek.pro/mcp",
-      "headers": { "X-API-Key": "YOUR_KEY" }
+      "headers": { "X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY" }
     }
   }
 }</code></pre></section>

@@ -200,12 +200,15 @@ Every directional flow reading carries a `reliability` block with its measured h
 ## 🤖 Connect Your AI Agent
 
 ### Remote MCP server (recommended)
-`https://flow.horustek.pro/mcp` (Streamable HTTP). Send your key as `X-API-Key: <key>` or `Authorization: Bearer <key>`.
-Without a key you are on the free tier: BTCUSDT and ETHUSDT flow, the public track record, US session context and service status.
+`https://flow.horustek.pro/mcp` (Streamable HTTP).
+
+- **RapidAPI subscribers:** send your RapidAPI key as `X-RapidAPI-Key: <key>`. Calls go through RapidAPI, so your RapidAPI plan and quota apply. [Subscribe on RapidAPI](https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence).
+- **Horus keys:** `X-API-Key: <key>` or `Authorization: Bearer <key>`.
+- **No key:** free tier: BTCUSDT and ETHUSDT flow, the public track record, US session context and service status.
 
 Claude Code:
 ```bash
-claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-API-Key: YOUR_HORUS_KEY"
+claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY"
 ```
 
 Any MCP client that supports remote servers:
@@ -215,7 +218,7 @@ Any MCP client that supports remote servers:
     "horus-flow": {
       "type": "http",
       "url": "https://flow.horustek.pro/mcp",
-      "headers": { "X-API-Key": "YOUR_HORUS_KEY" }
+      "headers": { "X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY" }
     }
   }
 }

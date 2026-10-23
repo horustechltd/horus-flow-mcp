@@ -285,7 +285,7 @@ else:
 
 ## 💎 Plans
 
-| Feature | Free | Builder / Trader ($49/mo) | Pro ($149/mo) | Institutional ($499/mo) |
+| Feature | Free | Builder / Trader ($29/mo) | Pro ($149/mo) | Institutional ($499/mo) |
 |:---|:---:|:---:|:---:|:---:|
 | Crypto order flow | BTCUSDT, ETHUSDT | Any Binance spot pair | Any Binance spot pair | Any Binance spot pair |
 | Flow history | – | 60 minutes | 24 hours | 24 hours |

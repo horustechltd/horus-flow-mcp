@@ -64,7 +64,7 @@ Most financial APIs sell raw, lagging price ticks that anyone can get for free f
 
 ### 💎 Subscription Tiers
 * **Explorer (Free):** 100 calls/day for basic evaluation.
-* **Trader ($49/mo):** 1,000 calls/day across all crypto and equity pairs.
+* **Trader ($29/mo):** 1,000 calls/day across all crypto and equity pairs.
 * **Professional ($149/mo):** 5,000 calls/day featuring full access to **Level 4 Horus Cortex Brain**, Liquidation Heatmaps, and Bot Action Multipliers.
 * **Institutional ($499/mo):** Unlimited calls, priority SLA, and dedicated MCP infrastructure.
 ```

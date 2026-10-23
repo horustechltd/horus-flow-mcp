@@ -386,7 +386,7 @@ async def get_api_info() -> str:
             "Volatility ignition detection",
             "Composite intelligence scoring (0-100)"
         ],
-        "pricing": "Explorer (Free), Trader ($49/mo), Professional ($149/mo), Institutional ($499/mo)",
+        "pricing": "Explorer (Free), Trader ($29/mo), Professional ($149/mo), Institutional ($499/mo)",
         "links": {
             "portal": "https://flow.horustek.pro",
             "rapidapi": "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence",

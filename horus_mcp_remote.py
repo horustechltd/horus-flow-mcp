@@ -316,7 +316,81 @@ async def get_service_status(ctx: Context = None) -> dict[str, Any]:
             "components": [_pick(c, "name", "status", "age_seconds", "uptime_24h_pct") for c in r.get("components", [])]}
 
 
-app = mcp.streamable_http_app()
+INFO = {
+    "name": "Horus Flow MCP server",
+    "transport": "streamable-http",
+    "endpoint": "https://flow.horustek.pro/mcp",
+    "auth": "Optional header X-API-Key: <key> or Authorization: Bearer <key>. Without a key the free tier applies.",
+    "connect": {
+        "claude_code": "claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header \"X-API-Key: YOUR_KEY\"",
+        "mcp_json": {"mcpServers": {"horus-flow": {"type": "http", "url": "https://flow.horustek.pro/mcp",
+                                                    "headers": {"X-API-Key": "YOUR_KEY"}}}},
+    },
+    "tools": ["get_crypto_flow", "get_flow_history", "get_market_overview", "get_derivatives", "get_cortex",
+              "get_ignitions", "get_track_record", "get_signal_ledger", "get_recent_events", "get_us_market_session",
+              "get_cross_asset", "get_equity_flow", "get_service_status"],
+    "docs": "https://flow.horustek.pro/llms.txt",
+    "track_record": "https://flow.horustek.pro/v1/track-record",
+    "status": "https://flow.horustek.pro/status.html",
+    "note": "This URL speaks the MCP protocol. Open it from an MCP client, not a browser.",
+}
+
+INFO_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Horus Flow MCP</title>
+<style>
+:root{--bg:#f7f7f5;--panel:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e4e3df;--code:#f0efeb}
+@media (prefers-color-scheme:dark){:root{--bg:#0e0f12;--panel:#16181d;--text:#ecebe7;--muted:#9a9890;--line:#2a2d34;--code:#1f2228}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 16px 48px}h1{font-size:22px;margin:0 0 6px}
+p{color:var(--muted)}section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0}
+h2{font-size:15px;margin:0 0 8px}pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow-x:auto;font-size:13px;margin:6px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}a{color:inherit}ul{margin:6px 0;padding-left:18px}
+</style></head><body><main>
+<h1>Horus Flow MCP server</h1>
+<p>This address speaks the Model Context Protocol (Streamable HTTP). Add it to an MCP client; a browser cannot use it directly.</p>
+<section><h2>Endpoint</h2><pre><code>https://flow.horustek.pro/mcp</code></pre>
+<p>Optional header <code>X-API-Key: YOUR_KEY</code> or <code>Authorization: Bearer YOUR_KEY</code>. Without a key you get the free tier.</p></section>
+<section><h2>Claude Code</h2><pre><code>claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-API-Key: YOUR_KEY"</code></pre></section>
+<section><h2>Any MCP client</h2><pre><code>{
+  "mcpServers": {
+    "horus-flow": {
+      "type": "http",
+      "url": "https://flow.horustek.pro/mcp",
+      "headers": { "X-API-Key": "YOUR_KEY" }
+    }
+  }
+}</code></pre></section>
+<section><h2>13 read-only tools</h2><ul>
+<li>Crypto order flow, flow history, market overview, derivatives across Binance, Bybit and OKX, Cortex, ignitions</li>
+<li>Track record and point-in-time signal ledger</li>
+<li>Recent events, US market session and halts, cross-asset view, US equity flow, service status</li></ul>
+<p><a href="/llms.txt">llms.txt</a> · <a href="/v1/track-record">Track record</a> · <a href="/status.html">Status</a></p></section>
+</main></body></html>"""
+
+
+class FriendlyGet:
+    """Plain GET/HEAD on /mcp without text/event-stream (a browser, curl, a link checker) gets a description
+    instead of the protocol's 406. MCP traffic (POST, or GET accepting text/event-stream) is untouched."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] in ("GET", "HEAD") and scope["path"].rstrip("/") == "/mcp":
+            accept = dict((k.decode().lower(), v.decode()) for k, v in scope["headers"]).get("accept", "")
+            if "text/event-stream" not in accept:
+                html = "text/html" in accept
+                body = (INFO_HTML if html else json.dumps(INFO, indent=2)).encode()
+                ctype = b"text/html; charset=utf-8" if html else b"application/json"
+                await send({"type": "http.response.start", "status": 200,
+                            "headers": [(b"content-type", ctype), (b"cache-control", b"no-store"),
+                                        (b"content-length", str(len(body)).encode())]})
+                await send({"type": "http.response.body", "body": b"" if scope["method"] == "HEAD" else body})
+                return
+        await self.inner(scope, receive, send)
+
+
+app = FriendlyGet(mcp.streamable_http_app())
 
 
 if __name__ == "__main__":

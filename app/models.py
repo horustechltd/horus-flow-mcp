@@ -153,5 +153,6 @@ class FlowResponse(BaseModel):
     # 🐋 HTA Whale Intent (from trading soldiers via Redis)
     whale_intent: Optional[dict] = None
     data_source: Optional[dict] = None
+    reliability: Optional[dict] = None
     
     timestamp: float                      # KEPT for backward compat

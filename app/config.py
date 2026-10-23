@@ -66,7 +66,7 @@ ALPACA_WS_BASE = "wss://stream.data.alpaca.markets/v2/iex"
 
 # Tracked symbols
 TRACKED_SYMBOLS_CRYPTO = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "LINKUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT"]
-TRACKED_SYMBOLS_EQUITY = ["AAPL", "NVDA", "TSLA"]
+TRACKED_SYMBOLS_EQUITY = ["AAPL", "NVDA", "TSLA", "QQQ", "COIN", "MSTR", "IBIT"]
 
 # Redis (reuse existing)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")

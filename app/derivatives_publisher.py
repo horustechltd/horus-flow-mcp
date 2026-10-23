@@ -32,7 +32,9 @@ import aiohttp
 
 logger = logging.getLogger("API.DerivativesPublisher")
 
-SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT",
+           "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "SUIUSDT"]
+SLOW_REFRESH = 300             # baseline series (daily candles, 24h long/short history) refresh every 5 min
 PUBLISH_INTERVAL = 60          # seconds between refreshes
 KEY_TTL = 300                  # documents expire 5 min after the last refresh
 
@@ -43,6 +45,10 @@ KEY_PUBLISHER_HEARTBEAT = "horus:api:derivatives_publisher:heartbeat"
 
 SPOT = "https://api.binance.com"
 FAPI = "https://fapi.binance.com"
+BYBIT = "https://api.bybit.com"
+OKX = "https://www.okx.com"
+
+_slow_cache: Dict[str, Any] = {}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -155,7 +161,8 @@ def compute_xflow(symbol: str, raw: Dict[str, Any], now: float) -> Dict[str, Any
         "price_change_10m_pct": round(px_10m, 3),
         "positioning_signal": positioning,
         "risk_assessment": risk,
-        "source": "Binance spot + USD-M futures public API",
+        "cross_venue": cross_venue(raw, oi_usd, funding),
+        "source": "Binance spot + USD-M futures public API; Bybit and OKX public APIs for cross-venue OI and funding",
         "method": (
             "market_type compares the futures/spot 24h volume ratio with its median over the last 7 complete days "
             "(>=1.5x HYPER_SPECULATION, <=0.67x SPOT_DRIVEN). premium_bias uses mark vs index "
@@ -163,6 +170,33 @@ def compute_xflow(symbol: str, raw: Dict[str, Any], now: float) -> Dict[str, Any
             "or -2% for MASS_DELEVERAGING)."
         ),
         "timestamp": now,
+    }
+
+
+def cross_venue(raw: Dict[str, Any], binance_oi_usd: float, binance_funding: float) -> Dict[str, Any]:
+    """Open interest and funding across Binance, Bybit and OKX perpetuals (USDT-margined)."""
+    venues: Dict[str, Dict[str, float]] = {"binance": {"oi_usd": round(binance_oi_usd, 2), "funding_rate": binance_funding}}
+    try:
+        b = (raw.get("bybit") or {}).get("result", {}).get("list", [])[0]
+        venues["bybit"] = {"oi_usd": round(_f(b.get("openInterestValue")), 2), "funding_rate": _f(b.get("fundingRate"))}
+    except (IndexError, AttributeError, TypeError):
+        pass
+    try:
+        o_oi = (raw.get("okx_oi") or {}).get("data", [])[0]
+        o_f = (raw.get("okx_funding") or {}).get("data", [])[0]
+        venues["okx"] = {"oi_usd": round(_f(o_oi.get("oiUsd")), 2), "funding_rate": _f(o_f.get("fundingRate"))}
+    except (IndexError, AttributeError, TypeError):
+        pass
+    venues = {k: v for k, v in venues.items() if v["oi_usd"] > 0}
+    total = sum(v["oi_usd"] for v in venues.values())
+    rates = [v["funding_rate"] for v in venues.values()]
+    return {
+        "venues": venues,
+        "venues_reporting": len(venues),
+        "total_oi_usd": round(total, 2),
+        "oi_weighted_funding_rate": round(sum(v["oi_usd"] * v["funding_rate"] for v in venues.values()) / total, 8) if total else None,
+        "funding_spread": round(max(rates) - min(rates), 8) if len(rates) > 1 else None,
+        "binance_share_of_oi": round(venues["binance"]["oi_usd"] / total, 4) if total and "binance" in venues else None,
     }
 
 
@@ -351,22 +385,48 @@ async def _get(session: aiohttp.ClientSession, url: str):
         return await r.json()
 
 
+async def _slow(session: aiohttp.ClientSession, name: str, url: str):
+    hit = _slow_cache.get(url)
+    if hit and time.time() - hit[0] < SLOW_REFRESH:
+        return hit[1]
+    data = await _get(session, url)
+    _slow_cache[url] = (time.time(), data)
+    return data
+
+
+async def _optional(session: aiohttp.ClientSession, url: str):
+    try:
+        return await _get(session, url)
+    except Exception:
+        return None
+
+
 async def fetch_raw(session: aiohttp.ClientSession, symbol: str) -> Dict[str, Any]:
-    urls = {
+    fast = {
         "spot24": f"{SPOT}/api/v3/ticker/24hr?symbol={symbol}",
         "fut24": f"{FAPI}/fapi/v1/ticker/24hr?symbol={symbol}",
         "premium": f"{FAPI}/fapi/v1/premiumIndex?symbol={symbol}",
         "oi": f"{FAPI}/fapi/v1/openInterest?symbol={symbol}",
         "oi_hist": f"{FAPI}/futures/data/openInterestHist?symbol={symbol}&period=5m&limit=7",
+        "taker": f"{FAPI}/futures/data/takerlongshortRatio?symbol={symbol}&period=5m&limit=1",
+        "klines": f"{FAPI}/fapi/v1/klines?symbol={symbol}&interval=5m&limit=7",
+    }
+    slow = {
         "global_ls": f"{FAPI}/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=5m&limit=288",
         "top_ls": f"{FAPI}/futures/data/topLongShortPositionRatio?symbol={symbol}&period=5m&limit=288",
         "spot_1d": f"{SPOT}/api/v3/klines?symbol={symbol}&interval=1d&limit=8",
         "fut_1d": f"{FAPI}/fapi/v1/klines?symbol={symbol}&interval=1d&limit=8",
-        "taker": f"{FAPI}/futures/data/takerlongshortRatio?symbol={symbol}&period=5m&limit=1",
-        "klines": f"{FAPI}/fapi/v1/klines?symbol={symbol}&interval=5m&limit=7",
     }
-    names = list(urls)
-    results = await asyncio.gather(*[_get(session, urls[n]) for n in names])
+    okx_inst = f"{symbol[:-4]}-USDT-SWAP"
+    optional = {
+        "bybit": f"{BYBIT}/v5/market/tickers?category=linear&symbol={symbol}",
+        "okx_oi": f"{OKX}/api/v5/public/open-interest?instType=SWAP&instId={okx_inst}",
+        "okx_funding": f"{OKX}/api/v5/public/funding-rate?instId={okx_inst}",
+    }
+    names = list(fast) + list(slow) + list(optional)
+    coros = ([_get(session, fast[n]) for n in fast] + [_slow(session, n, slow[n]) for n in slow]
+             + [_optional(session, optional[n]) for n in optional])
+    results = await asyncio.gather(*coros)
     return dict(zip(names, results))
 
 
@@ -435,7 +495,9 @@ async def publish_once(redis, session: aiohttp.ClientSession) -> Dict[str, str]:
 
             summaries["xflow"][sym] = {"market_type": xflow["market_type"], "premium_bias": xflow["premium_bias"],
                                        "positioning": xflow["positioning_signal"], "funding": xflow["funding_rate"],
-                                       "risk": xflow["risk_assessment"]}
+                                       "risk": xflow["risk_assessment"],
+                                       "total_oi_usd_3_venues": xflow["cross_venue"]["total_oi_usd"],
+                                       "oi_weighted_funding_rate": xflow["cross_venue"]["oi_weighted_funding_rate"]}
             summaries["heatmap"][sym] = {"gravity_direction": heatmap["gravity_direction"],
                                          "gravity_score": heatmap["gravity_score"], "crowd_bias": heatmap["crowd_bias"],
                                          "smart_money_divergence": heatmap["smart_money_divergence"]}

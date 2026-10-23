@@ -532,7 +532,8 @@ async def get_incubator_pipeline(request: Request, auth: dict = Depends(require_
 # 5️⃣  /liquidation-heatmap — Liquidation Gravity Map
 # ═══════════════════════════════════════════════════════════════
 
-VALID_SYMBOLS = {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
+from app.derivatives_publisher import SYMBOLS as _DERIV_SYMBOLS
+VALID_SYMBOLS = set(_DERIV_SYMBOLS)
 STALE_THRESHOLD = 300  # 5 minutes
 
 

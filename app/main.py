@@ -33,6 +33,8 @@ from app.config import TEST_INSTANCE
 from app.derivatives_publisher import derivatives_publisher_loop, KEY_COMPOSITE
 from app.history_recorder import history_recorder_loop
 from app.status_monitor import status_monitor_loop, public_status
+from app.routes.agents import router_agents
+from app import events as agent_events, track_record, us_market
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -50,6 +52,8 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(derivatives_publisher_loop(redis_manager)),
         asyncio.create_task(history_recorder_loop()),
         asyncio.create_task(status_monitor_loop()),
+        asyncio.create_task(track_record.track_record_loop()),
+        asyncio.create_task(us_market.halts_loop()),
     ]
     alp_task = None
     if TEST_INSTANCE:
@@ -60,6 +64,9 @@ async def lifespan(app: FastAPI):
         alp_task = asyncio.create_task(start_alpaca_ws())
         background.append(asyncio.create_task(wiseman_publisher_loop(redis_manager)))
         background.append(asyncio.create_task(ignition_publisher_loop(redis_manager)))
+        # events are shared state: only the production instance detects and delivers them
+        background.append(asyncio.create_task(agent_events.detector_loop()))
+        background.append(asyncio.create_task(agent_events.webhook_loop()))
     yield
     # Shutdown
     logger.info("Shutting down resources...")
@@ -124,6 +131,7 @@ app.include_router(router_auth, prefix="/api/auth", tags=["🔐 Authentication"]
 app.include_router(router_oauth, prefix="/api/oauth", tags=["🌐 Social Login"])
 app.include_router(router_billing, prefix="/api/billing", tags=["💳 Billing"])
 app.include_router(router_admin, prefix="/api/admin", tags=["🛡️ Admin"])
+app.include_router(router_agents, prefix="/v1", tags=["Agents"])
 
 # MCP Registry Domain Verification
 from fastapi.responses import PlainTextResponse, RedirectResponse

@@ -43,7 +43,13 @@ COMPONENTS: List[Dict[str, Any]] = [
     {"name": "incubator", "label": "Behavioral Court / Incubator", "max_age": None,
      "endpoints": ["/v1/intelligence/verdict/{symbol}", "/v1/intelligence/incubator"]},
     {"name": "alpaca_iex_stream", "label": "US equities (IEX sample via Alpaca)", "max_age": 120,
-     "endpoints": ["/v1/flow/equity/{symbol}", "/v1/flow/equity/macro-blocks"]},
+     "endpoints": ["/v1/flow/equity/{symbol}", "/v1/flow/equity/macro-blocks", "/v1/cross-asset"]},
+    {"name": "us_halts_feed", "label": "US trading halts (Nasdaq Trader)", "max_age": 1200,
+     "endpoints": ["/v1/equity/session", "/v1/equity/halts"]},
+    {"name": "event_detector", "label": "Agent events and webhooks", "max_age": 120,
+     "endpoints": ["/v1/events", "/v1/events/stream", "/v1/webhooks"]},
+    {"name": "track_record", "label": "Live signal track record", "max_age": 3600,
+     "endpoints": ["/v1/track-record", "/v1/track-record/signals"]},
 ]
 
 _latest: Dict[str, Dict[str, Any]] = {}
@@ -91,7 +97,16 @@ async def _age(name: str) -> Optional[float]:
         return now - ws_manager._last_msg_time
     if name == "alpaca_iex_stream":
         return now - alpaca_ws_manager.last_msg_time if alpaca_ws_manager.last_msg_time else None
+    if name == "us_halts_feed":
+        from app import us_market
+        t = us_market._halts.get("fetched_at") or 0
+        return now - t if t else None
+    if name == "track_record":
+        from app import track_record
+        t = track_record._cache.get("computed_at") or 0
+        return now - t if t else None
     key = {"derivatives_publisher": KEY_PUBLISHER_HEARTBEAT,
+           "event_detector": "horus:api:events:heartbeat",
            "wiseman_climate": "hta:state:wiseman_climate",
            "ignition_scanner": "horus:global_ignition_state",
            "cortex": "horus:maestro:state"}.get(name)

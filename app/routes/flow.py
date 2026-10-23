@@ -3,9 +3,34 @@ import time
 import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 
 from app.auth import verify_api_key, require_tier, tier_level
 from app.config import FREE_TIER_SYMBOLS
+from app import track_record
+
+
+def compact_flow(doc: dict) -> dict:
+    """Token-light view for AI agents (~150 tokens)."""
+    m = doc.get("metrics") or {}
+    rel = doc.get("reliability") or {}
+    return {
+        "symbol": doc.get("symbol"),
+        "signal": doc.get("signal"),
+        "direction_bias": doc.get("direction_bias"),
+        "confidence": doc.get("confidence"),
+        "risk": doc.get("risk"),
+        "action": doc.get("action"),
+        "price": m.get("price"),
+        "delta_30s_usd": m.get("delta_30s"),
+        "buy_sell_ratio_30s": m.get("buy_sell_ratio"),
+        "bid_ask_depth_ratio": m.get("bid_ask_ratio"),
+        "large_sells_5m": m.get("large_sell_count"),
+        "hit_rate_5m": (rel.get("hit_rate") or {}).get("5m"),
+        "reliability": rel.get("interpretation") or rel.get("note"),
+        "freshness_ms": doc.get("freshness_ms"),
+        "timestamp_utc": doc.get("timestamp_utc"),
+    }
 from app.models import FlowResponse, ENGINE_VERSION
 from app.interpreters.flow_interpreter import interpret_flow
 from app.feeds.binance_ws import ws_manager
@@ -15,7 +40,10 @@ router = APIRouter()
 
 
 @router.get("/{symbol}", response_model=FlowResponse)
-async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
+async def get_flow_signal(symbol: str,
+                          view: str = Query("full", pattern="^(full|compact)$",
+                                            description="compact = token-light summary for AI agents"),
+                          auth: dict = Depends(verify_api_key)):
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
 
     if tier_level(auth.get("tier")) == 0 and clean_symbol not in FREE_TIER_SYMBOLS:
@@ -29,7 +57,7 @@ async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
     if cached:
         ts = cached.get("timestamp") or time.time()
         cached["freshness_ms"] = int(max(0.0, time.time() - ts) * 1000)
-        return FlowResponse(**cached)
+        return JSONResponse(compact_flow(cached)) if view == "compact" else FlowResponse(**cached)
 
     status = ws_manager.add_symbol(clean_symbol)
     if status == "invalid":
@@ -46,6 +74,8 @@ async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
 
     response_data = await build_flow_response(clean_symbol)
     await redis_manager.set_cached_response(clean_symbol, response_data)
+    if view == "compact":
+        return JSONResponse(compact_flow(response_data))
     return FlowResponse(**response_data)
 
 
@@ -181,6 +211,8 @@ async def build_flow_response(clean_symbol: str, update_oscillation: bool = True
         response_data["whale_intent"] = fi_dict
 
     response_data["metrics"]["price"] = ws_manager.flow.last_price(clean_symbol)
+    response_data["reliability"] = track_record.reliability_for(
+        response_data["signal"], clean_symbol, response_data["confidence"], response_data["direction_bias"])
     return response_data
 
 

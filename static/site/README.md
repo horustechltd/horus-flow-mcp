@@ -183,6 +183,7 @@ Every Level 3 document carries a `method` field with its exact formula. Endpoint
 ### Agent Layer
 | Endpoint | Method | Description | Plan |
 |:---|:---|:---|:---|
+| `/v1/scan` | `GET` | Rank about 250 Binance perpetuals in one call: buyers or sellers in control, volume surge, breakout candidates, crowded funding, or custom filters | Free: 3 rows · Builder: 100 |
 | `/v1/track-record` | `GET` | Live hit rate of every signal at 1/5/15/30 min, by signal, symbol and confidence | Public |
 | `/v1/track-record/signals` | `GET` | Point-in-time ledger: what Horus said, at what price, and what happened next (since Aug 2026) | Builder |
 | `/v1/events` | `GET` | Changes since your last check: liquidation cascades, regime changes, new US halts, and more | Builder |
@@ -227,6 +228,7 @@ Any MCP client that supports remote servers:
 ### Tools (all read-only, compact JSON with an output schema)
 | Tool | What it answers | Plan |
 |:---|:---|:---|
+| `scan_market` | Where are buyers, sellers or volume surging across about 250 markets right now | Free (3 rows) / Builder |
 | `get_crypto_flow` | Live order flow for one pair, with the signal's measured hit rate | Free (BTC, ETH) / Builder |
 | `get_flow_history` | Is pressure building or fading over the last hour | Builder |
 | `get_market_overview` | Climate, Cortex and 10 majors in one call | Pro |

@@ -3,7 +3,7 @@
   "info": {
     "title": "Horus Flow Intelligence",
     "version": "3.1.0",
-    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nPlans: BASIC (free) BTCUSDT and ETHUSDT flow, track record, US session. PRO adds every pair, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
+    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) BTCUSDT and ETHUSDT flow, track record, US session. PRO adds every pair, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
     "contact": {
       "name": "Horus Tech Ltd",
       "email": "admin@horustek.pro",
@@ -17,6 +17,10 @@
     }
   ],
   "tags": [
+    {
+      "name": "Market Scanner",
+      "description": "Rank about 250 perpetual markets in one call"
+    },
     {
       "name": "Crypto Order Flow",
       "description": "Live order book and trade flow for Binance spot pairs"
@@ -2894,6 +2898,258 @@
                     "error": "data_stale",
                     "age_seconds": 412,
                     "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scan": {
+      "get": {
+        "tags": [
+          "Market Scanner"
+        ],
+        "summary": "Scan the market",
+        "operationId": "scan_market",
+        "description": "One call ranks about 250 Binance USDT perpetuals (24h volume >= $5M), each refreshed at least every ~2 minutes from 5-minute candles: 15m and 1h price change, share of notional bought by aggressive buyers, net taker flow in USD, volume surge vs the previous 45 minutes, funding, ignition score, and Horus live flow with its measured hit rate where tracked. Presets answer common questions (where are buyers in control, where is volume surging, breakout candidates with buyers behind them); custom uses the filters. Rankings of current conditions, not predictions.\n\nPlans: BASIC (free) returns the first 3 results; PRO, ULTRA and MEGA return up to 100.",
+        "parameters": [
+          {
+            "name": "preset",
+            "in": "query",
+            "required": false,
+            "description": "A ready question, or custom to use the filters",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "buyers_in_control",
+                "sellers_in_control",
+                "volume_surge",
+                "breakout_candidates",
+                "crowded_funding",
+                "top_movers",
+                "custom"
+              ],
+              "default": "buyers_in_control"
+            },
+            "example": "buyers_in_control"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum rows",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "min_volume_24h",
+            "in": "query",
+            "required": false,
+            "description": "Minimum 24h futures volume in USD",
+            "schema": {
+              "type": "number",
+              "minimum": 1000000,
+              "default": 5000000
+            }
+          },
+          {
+            "name": "min_taker_buy_ratio",
+            "in": "query",
+            "required": false,
+            "description": "custom: minimum aggressive buy share over 15m (0-1)",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          {
+            "name": "max_taker_buy_ratio",
+            "in": "query",
+            "required": false,
+            "description": "custom: maximum aggressive buy share over 15m (0-1)",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          {
+            "name": "min_volume_surge",
+            "in": "query",
+            "required": false,
+            "description": "custom: minimum volume surge (1 = normal pace)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "min_ignition",
+            "in": "query",
+            "required": false,
+            "description": "custom: minimum ignition score (0-1)",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          {
+            "name": "min_change_15m",
+            "in": "query",
+            "required": false,
+            "description": "custom: minimum 15m price change, percent",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "max_change_15m",
+            "in": "query",
+            "required": false,
+            "description": "custom: maximum 15m price change, percent",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "min_abs_funding",
+            "in": "query",
+            "required": false,
+            "description": "custom: minimum absolute funding rate per 8h (0.0005 = 0.05%)",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "description": "custom: field to sort by",
+            "schema": {
+              "type": "string",
+              "default": "net_taker_flow_15m_usd",
+              "enum": [
+                "net_taker_flow_15m_usd",
+                "taker_buy_ratio_15m",
+                "volume_surge",
+                "change_15m_pct",
+                "change_1h_pct",
+                "change_24h_pct",
+                "ignition_score",
+                "funding_rate",
+                "volume_24h_usd"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "description": "custom: asc or desc",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "generated_at": "2026-10-23T18:51:34+00:00",
+                  "preset": "buyers_in_control",
+                  "criteria": "Aggressive buyers took at least 58% of traded notional over 15 minutes and price is up.",
+                  "coverage": {
+                    "universe": 250,
+                    "with_candles": 125,
+                    "oldest_seconds": 41,
+                    "last_cycle_seconds_ago": 36
+                  },
+                  "count": 3,
+                  "results": [
+                    {
+                      "symbol": "CLUSDT",
+                      "price": 103.49,
+                      "change_15m_pct": 0.155,
+                      "change_1h_pct": 0.407,
+                      "change_24h_pct": 4.052,
+                      "volume_24h_usd": 1148490382.0,
+                      "volume_surge": 0.91,
+                      "taker_buy_ratio_15m": 0.647,
+                      "taker_buy_ratio_1h": 0.515,
+                      "net_taker_flow_15m_usd": 3422994.0,
+                      "funding_rate": -0.00011056,
+                      "ignition_score": 0.775,
+                      "data_age_s": 40
+                    },
+                    {
+                      "symbol": "BZUSDT",
+                      "price": 111.84,
+                      "change_15m_pct": 0.116,
+                      "change_1h_pct": 0.323,
+                      "change_24h_pct": 2.822,
+                      "volume_24h_usd": 603829071.0,
+                      "volume_surge": 0.84,
+                      "taker_buy_ratio_15m": 0.659,
+                      "taker_buy_ratio_1h": 0.469,
+                      "net_taker_flow_15m_usd": 1810516.0,
+                      "funding_rate": -9.36e-06,
+                      "ignition_score": 0.679,
+                      "data_age_s": 40
+                    },
+                    {
+                      "symbol": "KORUUSDT",
+                      "price": 10.62,
+                      "change_15m_pct": 0.473,
+                      "change_1h_pct": -0.282,
+                      "change_24h_pct": 3.307,
+                      "volume_24h_usd": 1355118496.0,
+                      "volume_surge": 0.55,
+                      "taker_buy_ratio_15m": 0.618,
+                      "taker_buy_ratio_1h": 0.511,
+                      "net_taker_flow_15m_usd": 671308.0,
+                      "funding_rate": 0.0,
+                      "ignition_score": 0.677,
+                      "data_age_s": 40
+                    }
+                  ],
+                  "fields": {
+                    "taker_buy_ratio_15m": "share of traded notional bought by aggressive buyers over 15 minutes (0.5 = balanced)",
+                    "net_taker_flow_15m_usd": "aggressive buys minus aggressive sells over 15 minutes, USD",
+                    "volume_surge": "average 5-minute volume of the last 15 minutes / the 45 minutes before",
+                    "funding_rate": "per 8 hours, Binance perpetual"
+                  },
+                  "note": "Rankings of current conditions, not predictions. Picks are recorded so their accuracy can be published later.",
+                  "data_source": "Binance USDT-margined perpetuals, 5-minute candles"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Scanner warming up after a restart",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_unavailable"
                   }
                 }
               }

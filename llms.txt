@@ -10,6 +10,7 @@
 - Status: https://flow.horustek.pro/v1/status
 
 ## What it provides
+- Market scanner: about 250 Binance perpetuals ranked in one call by aggressive buying or selling, volume surge, breakout conditions or funding (GET /v1/scan, MCP tool scan_market).
 - Order flow for any Binance spot pair: 5s and 30s aggressive buy/sell delta in USD, top-20 order book depth ratio, large trades relative to the pair's 24h volume.
 - Derivatives for 10 majors (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, SUI): funding and open interest across Binance, Bybit and OKX; futures/spot volume vs its 7-day median; crowd long/short vs its 24h median; estimated liquidation levels; liquidations seen in the last 5 minutes.
 - Horus Cortex: BTC regime, trust score, contradictions between evidence families.

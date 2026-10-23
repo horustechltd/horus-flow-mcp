@@ -11,7 +11,8 @@ from app import track_record
 
 
 def compact_flow(doc: dict) -> dict:
-    """Token-light view for AI agents (~150 tokens)."""
+    """Token-light view for AI agents (~150 tokens). Deliberately has no "action" field:
+    readings are context with a measured hit rate, not trade instructions."""
     m = doc.get("metrics") or {}
     rel = doc.get("reliability") or {}
     return {
@@ -20,7 +21,6 @@ def compact_flow(doc: dict) -> dict:
         "direction_bias": doc.get("direction_bias"),
         "confidence": doc.get("confidence"),
         "risk": doc.get("risk"),
-        "action": doc.get("action"),
         "price": m.get("price"),
         "delta_30s_usd": m.get("delta_30s"),
         "buy_sell_ratio_30s": m.get("buy_sell_ratio"),

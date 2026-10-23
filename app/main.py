@@ -50,11 +50,12 @@ async def lifespan(app: FastAPI):
     background = [
         asyncio.create_task(ws_manager.refresh_market_info_loop()),
         asyncio.create_task(derivatives_publisher_loop(redis_manager)),
-        asyncio.create_task(history_recorder_loop()),
-        asyncio.create_task(status_monitor_loop()),
         asyncio.create_task(track_record.track_record_loop()),
         asyncio.create_task(us_market.halts_loop()),
     ]
+    if not TEST_INSTANCE:  # these write shared history / uptime samples
+        background.append(asyncio.create_task(history_recorder_loop()))
+        background.append(asyncio.create_task(status_monitor_loop()))
     alp_task = None
     if TEST_INSTANCE:
         # A test instance must not write keys shared with the trading platform

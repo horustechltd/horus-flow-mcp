@@ -585,6 +585,7 @@ def test_flow_carries_reliability_and_compact_view(ledger):
     assert rel["track_record_url"] == "/v1/track-record" if rel["directional"] else "note" in rel
     compact = get("/v1/flow/crypto/BTCUSDT?view=compact", "admin").json()
     assert set(compact) >= {"signal", "direction_bias", "price", "delta_30s_usd", "reliability", "freshness_ms"}
+    assert "action" not in compact
     assert "metrics" not in compact and len(json.dumps(compact)) < 900
 
 

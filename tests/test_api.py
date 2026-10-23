@@ -91,7 +91,9 @@ class FakeRedis:
     async def get(self, k):
         return self.kv[k] if self._alive(k) else None
 
-    async def set(self, k, v, ex=None):
+    async def set(self, k, v, ex=None, nx=False):
+        if nx and self._alive(k):
+            return None
         self.kv[k] = v if isinstance(v, str) else str(v)
         if ex:
             self.ttl[k] = time.time() + ex
@@ -104,6 +106,20 @@ class FakeRedis:
 
     async def hgetall(self, k):
         return dict(self.hashes.get(k, {}))
+
+    async def hincrby(self, k, f, n=1):
+        h = self.hashes.setdefault(k, {})
+        h[f] = str(int(h.get(f, 0)) + n)
+        return int(h[f])
+
+    async def pfadd(self, k, *vals):
+        self.lists.setdefault(k, [])
+        for v in vals:
+            if v not in self.lists[k]:
+                self.lists[k].append(v)
+
+    async def pfcount(self, k):
+        return len(self.lists.get(k, []))
 
     async def scan_iter(self, pattern="*", count=None):
         for k in list(self.kv) + list(self.hashes):
@@ -715,3 +731,37 @@ def test_cross_asset_thin_sample(monkeypatch):
         alpaca_ws_manager.flow.feed("SPY", 500.0, 10, True, now - 5 + i)
     r = get("/v1/cross-asset", "builder").json()
     assert r["us_equities"]["SPY"]["flow_skew"] == "THIN_SAMPLE" and r["us_equities"]["SPY"]["trades_5m"] == 4
+
+
+# ═══════════════════════════ RapidAPI usage counters ═══════════════════════════
+from app import rapidapi_stats  # noqa: E402
+
+
+def test_rapidapi_usage_is_counted(fresh_state):
+    h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "alice", "X-RapidAPI-Subscription": "BASIC"}
+    assert client.get("/v1/flow/crypto/BTCUSDT", headers=h).status_code == 200
+    assert client.get("/v1/flow/crypto/SOLUSDT", headers=h).status_code == 403
+    client.get("/v1/flow/crypto/BTCUSDT", headers={**h, "X-RapidAPI-User": "bob", "X-RapidAPI-Subscription": "PRO"})
+    client.get("/v1/flow/crypto/BTCUSDT", headers={"X-API-Key": KEYS["admin"]})  # not RapidAPI: not counted
+    s = asyncio.run(rapidapi_stats.summary(fresh_state, 1))[0]
+    assert s["requests"] == 3
+    assert s["requests_by_plan"] == {"BASIC": 2, "PRO": 1}
+    assert s["unique_subscribers_by_plan"] == {"BASIC": 1, "PRO": 1}
+    assert s["denied"] == {"BASIC /v1/flow/crypto/{symbol} 403": 1}
+    assert s["top_endpoints"] == {"/v1/flow/crypto/{symbol}": 3}
+    assert "testserver" in s["hosts"]
+    text = rapidapi_stats.telegram_text(s)
+    assert "إجمالي الطلبات: 3" in text and "BASIC" in text and "رُفضت" in text
+
+
+def test_rapidapi_usage_endpoint_is_admin_only(fresh_state):
+    assert get("/v1/admin/rapidapi-usage", "pro").status_code == 403
+    r = get("/v1/admin/rapidapi-usage?days=2", "admin")
+    assert r.status_code == 200 and len(r.json()["days"]) == 2
+
+
+def test_route_template_fallback():
+    import app.main as m
+    assert m._route_template("/v1/flow/crypto/BTCUSDT") == "/v1/flow/crypto/{symbol}"
+    assert m._route_template("/v1/flow/crypto/BTCUSDT/history") == "/v1/flow/crypto/{symbol}/history"
+    assert m._route_template("/v1/intelligence/cortex") == "/v1/intelligence/cortex"

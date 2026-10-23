@@ -209,11 +209,30 @@ async def status_monitor_loop():
             _latest.update(sample)
             await _record(sample)
             await _alerts(sample)
+            await _daily_rapidapi_report()
         except asyncio.CancelledError:
             raise
         except Exception as e:
             logger.error(f"status monitor error: {e}")
         await asyncio.sleep(CHECK_INTERVAL)
+
+
+REPORT_HOUR_UTC = 6  # 09:00 in Egypt / 15:00 in Japan
+
+
+async def _daily_rapidapi_report():
+    """Once a day, send yesterday's RapidAPI usage to the owner's Telegram (Arabic)."""
+    now = datetime.now(timezone.utc)
+    if now.hour < REPORT_HOUR_UTC or not redis_manager.redis:
+        return
+    from app import rapidapi_stats
+    from datetime import timedelta
+    yesterday = (now.date() - timedelta(days=1)).isoformat()
+    flag = f"{rapidapi_stats.PREFIX}:report_sent:{yesterday}"
+    if not await redis_manager.redis.set(flag, "1", ex=3 * 86400, nx=True):
+        return  # already sent
+    summary = await rapidapi_stats.day_summary(redis_manager.redis, yesterday)
+    await _send_telegram(rapidapi_stats.telegram_text(summary))
 
 
 async def public_status() -> Dict[str, Any]:

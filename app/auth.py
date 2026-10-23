@@ -147,6 +147,9 @@ async def verify_api_key(
         tier = f"RAPIDAPI_{plan}" if plan else "RAPIDAPI_COMMERCIAL"
         if tier not in TIER_LEVELS:
             tier = "RAPIDAPI_BASIC"
+        # Read by the usage middleware (app/rapidapi_stats.py). The raw plan name is kept so
+        # custom RapidAPI plan names show up in the counters even if they map to BASIC.
+        request.state.rapidapi = {"plan": plan or "NONE", "tier": tier, "user": subscriber}
         return {"key": f"rapidapi:{subscriber}", "tier": tier}
 
     if not api_key:

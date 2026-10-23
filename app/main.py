@@ -34,7 +34,9 @@ from app.derivatives_publisher import derivatives_publisher_loop, KEY_COMPOSITE
 from app.history_recorder import history_recorder_loop
 from app.status_monitor import status_monitor_loop, public_status
 from app.routes.agents import router_agents
-from app import events as agent_events, track_record, us_market
+from app import events as agent_events, track_record, us_market, rapidapi_stats
+from app.auth import require_tier
+from fastapi import Depends, Query
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -122,8 +124,24 @@ async def add_process_time_header(request: Request, call_next):
             response_time_ms=process_time_ms,
             client_ip=ip
         )
-        
+
+    # RapidAPI usage counters (plan, unique subscribers, endpoint, status)
+    rapid = getattr(request.state, "rapidapi", None)
+    if rapid:
+        try:
+            route = getattr(request.scope.get("route"), "path", None) or _route_template(request.url.path)
+            await rapidapi_stats.record(redis_manager.redis, rapid["plan"], rapid["user"], route,
+                                        response.status_code, request.headers.get("host", ""))
+        except Exception as e:
+            logger.error(f"rapidapi stats error: {e}")
+
     return response
+
+
+def _route_template(path: str) -> str:
+    """Collapse symbol-like path segments so counters group by endpoint, not by coin."""
+    import re
+    return re.sub(r"/[A-Z0-9]{2,15}(?=/|$)", "/{symbol}", path)
 
 app.include_router(flow_router, prefix="/v1/flow/crypto", tags=["Crypto Flow"])
 app.include_router(router_equity, prefix="/v1/flow/equity", tags=["Equity Flow"])
@@ -144,6 +162,12 @@ async def root_redirect():
 @app.get("/.well-known/mcp-registry-auth", response_class=PlainTextResponse, tags=["System"])
 async def mcp_registry_auth():
     return "v=MCPv1; k=ed25519; p=nWYLm+WB0QKWTVhGQtHDJoNL4eraIJjq56Wjrfj6Vs0="
+
+@app.get("/v1/admin/rapidapi-usage", tags=["System"], include_in_schema=False)
+async def rapidapi_usage(days: int = Query(7, ge=1, le=100), auth: dict = Depends(require_tier("ADMIN"))):
+    """RapidAPI usage per day: requests and unique subscribers per plan, endpoints, denials, hosts."""
+    return {"days": await rapidapi_stats.summary(redis_manager.redis, days)}
+
 
 @app.get("/README.md", response_class=PlainTextResponse, tags=["System"])
 async def serve_readme():

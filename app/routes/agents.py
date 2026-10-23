@@ -199,9 +199,25 @@ async def equity_halts(limit: int = Query(100, ge=1, le=500)):
     return us_market.halts_view(limit=limit) | {"today": us_market._halts["items"][:limit]}
 
 
-def _skew(buy_ratio: Optional[float]) -> str:
+CROSS_WINDOW_S = 300
+MIN_TRADES = {"crypto": 50, "equity": 30}
+
+
+def window_flow(flow_detector, symbol: str, seconds: int = CROSS_WINDOW_S) -> Dict[str, Any]:
+    """Aggressive buy share and trade count over a window, from the in-memory trade buffer."""
+    now = time.time()
+    trades = [t for t in list(flow_detector._trades.get(symbol, [])) if now - t["ts"] <= seconds]
+    buy = sum(t["notional"] for t in trades if not t["is_sell"])
+    total = sum(t["notional"] for t in trades)
+    return {"trades": len(trades), "buy_ratio": round(buy / total, 3) if total else None,
+            "price": trades[-1]["price"] if trades else None}
+
+
+def _skew(buy_ratio: Optional[float], trades: int = 10 ** 9, min_trades: int = 0) -> str:
     if buy_ratio is None:
         return "NO_DATA"
+    if trades < min_trades:
+        return "THIN_SAMPLE"
     if buy_ratio >= 0.6:
         return "BUYING"
     if buy_ratio <= 0.4:
@@ -220,13 +236,15 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
     from app.redis_client import redis_manager
     from app.routes.flow import build_flow_response
 
+    from app.feeds.binance_ws import ws_manager
     sess = us_market.session()
     btc = None
     try:
         f = await build_flow_response("BTCUSDT", update_oscillation=False)
+        w = window_flow(ws_manager.flow, "BTCUSDT")
         btc = {"signal": f["signal"], "direction_bias": f["direction_bias"], "price": f["metrics"].get("price"),
-               "buy_sell_ratio_30s": f["metrics"].get("buy_sell_ratio"), "delta_30s_usd": f["metrics"].get("delta_30s"),
-               "flow_skew": _skew(f["metrics"].get("buy_sell_ratio"))}
+               "buy_ratio_5m": w["buy_ratio"], "trades_5m": w["trades"],
+               "flow_skew": _skew(w["buy_ratio"], w["trades"], MIN_TRADES["crypto"])}
     except HTTPException:
         pass
     cortex = None
@@ -240,10 +258,10 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
     equities: Dict[str, Any] = {}
     us_live = sess["phase"] in ("pre_market", "regular", "after_hours")
     for sym in ("SPY", "QQQ", "COIN", "MSTR", "IBIT"):
-        d = alpaca_ws_manager.flow.get_delta(sym) if us_live else None
-        if d and d.get("trade_count_30s", 0) > 0:
-            equities[sym] = {"buy_sell_ratio_30s": round(d["buy_ratio"], 3), "trades_30s": d["trade_count_30s"],
-                             "price": alpaca_ws_manager.flow.last_price(sym), "flow_skew": _skew(d["buy_ratio"])}
+        w = window_flow(alpaca_ws_manager.flow, sym) if us_live else None
+        if w and w["trades"] > 0:
+            equities[sym] = {"buy_ratio_5m": w["buy_ratio"], "trades_5m": w["trades"], "price": w["price"],
+                             "flow_skew": _skew(w["buy_ratio"], w["trades"], MIN_TRADES["equity"])}
         else:
             equities[sym] = {"flow_skew": "NO_DATA" if us_live else "MARKET_CLOSED"}
 
@@ -268,6 +286,7 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
         "us_session": {k: sess[k] for k in ("phase", "next_open_et", "next_close_et", "minutes_to_close")},
         "btc": btc, "cortex": cortex, "us_equities": equities,
         "alignment": alignment, "note": note,
-        "windows": "Flow skews use aggressive trades over the last 30 seconds (BUYING >= 60% buys, SELLING <= 40%).",
+        "windows": ("Flow skews use aggressive trades over the last 5 minutes (BUYING >= 60% of notional bought, "
+                    "SELLING <= 40%). Fewer than 50 crypto or 30 equity trades is reported as THIN_SAMPLE."),
         "data_source": {"crypto": "Binance spot public stream", "equities": "IEX via Alpaca, about 3% of US consolidated volume (sample)"},
     }

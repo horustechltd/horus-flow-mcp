@@ -47,6 +47,8 @@ DEDUP_SECONDS = 300
 MAX_WEBHOOKS_PER_OWNER = 5
 WEBHOOK_DISABLE_AFTER = 50
 STRONG_SIGNALS = {"STRONG_BUY_PRESSURE", "STRONG_SELL_PRESSURE", "LIQUIDATION_CASCADE", "SHORT_SQUEEZE", "EMERGENCY_DUMP"}
+FLOW_WARMUP_SECONDS = 180      # no flow events while order books and trade windows refill after a restart
+FLOW_PERSIST_TICKS = 3         # a strong signal must hold for 3 consecutive ticks (45s) to become an event
 
 _subscribers: Set[asyncio.Queue] = set()
 _webhook_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=5000)
@@ -114,6 +116,8 @@ class Detector:
         self.prev: Dict[str, Any] = {}
         self.seen_ignitions: Dict[str, float] = {}
         self.seen_halts: Set[str] = set()
+        self.started = time.time()
+        self.flow_streak: Dict[str, Any] = {}
 
     def _dedup(self, key: str) -> bool:
         now = time.time()
@@ -169,12 +173,18 @@ class Detector:
                     doc = await build_flow_response(sym, update_oscillation=False)
                 except Exception:
                     continue
-                if doc["signal"] in STRONG_SIGNALS and self._dedup(f"flow:{sym}:{doc['signal']}"):
+                prev_sig, n = self.flow_streak.get(sym, (None, 0))
+                n = n + 1 if doc["signal"] == prev_sig else 1
+                self.flow_streak[sym] = (doc["signal"], n)
+                warmed = time.time() - self.started >= FLOW_WARMUP_SECONDS
+                if (warmed and n == FLOW_PERSIST_TICKS and doc["signal"] in STRONG_SIGNALS
+                        and self._dedup(f"flow:{sym}:{doc['signal']}")):
                     rel = doc.get("reliability") or {}
                     await fire("strong_flow_signal", {
                         "signal": doc["signal"], "direction_bias": doc["direction_bias"],
                         "confidence": doc["confidence"], "price": doc["metrics"].get("price"),
                         "delta_30s_usd": doc["metrics"].get("delta_30s"),
+                        "held_for_seconds": FLOW_PERSIST_TICKS * DETECT_INTERVAL,
                         "hit_rate_5m": (rel.get("hit_rate") or {}).get("5m"),
                         "reliability": rel.get("interpretation")}, sym)
         except Exception as e:

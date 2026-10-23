@@ -676,3 +676,42 @@ def test_cross_asset(monkeypatch):
     open_ = get("/v1/cross-asset", "builder").json()
     assert open_["us_equities"]["SPY"]["flow_skew"] == "BUYING"
     assert open_["alignment"] == "RISK_ON_ALIGNED", open_
+
+
+def _strong_doc(sym):
+    return {"signal": "STRONG_BUY_PRESSURE", "direction_bias": "BULLISH", "confidence": 0.9,
+            "metrics": {"price": 1.0, "delta_30s": 1.0}, "reliability": {}}
+
+
+def test_flow_events_need_persistence(monkeypatch, fresh_state):
+    import app.routes.flow as flow_mod
+
+    async def fake_build(sym, update_oscillation=True):
+        return _strong_doc(sym)
+
+    monkeypatch.setattr(flow_mod, "build_flow_response", fake_build)
+    det = ev.Detector()
+    det.started = time.time() - 1000          # warmed up
+    counts = [len([e for e in asyncio.run(det.tick()) if e["type"] == "strong_flow_signal"]) for _ in range(4)]
+    assert counts == [0, 0, 3, 0]             # fires once per symbol on the 3rd consecutive tick, then dedups
+
+
+def test_flow_events_suppressed_during_warmup(monkeypatch, fresh_state):
+    import app.routes.flow as flow_mod
+
+    async def fake_build(sym, update_oscillation=True):
+        return _strong_doc(sym)
+
+    monkeypatch.setattr(flow_mod, "build_flow_response", fake_build)
+    det = ev.Detector()                       # just started
+    assert sum(len(asyncio.run(det.tick())) for _ in range(4)) == 0
+
+
+def test_cross_asset_thin_sample(monkeypatch):
+    monkeypatch.setattr(us_market, "session", lambda now=None: {"phase": "regular", "next_open_et": "x", "next_close_et": "y", "minutes_to_close": 30})
+    alpaca_ws_manager.flow._trades.clear()
+    now = time.time()
+    for i in range(4):
+        alpaca_ws_manager.flow.feed("SPY", 500.0, 10, True, now - 5 + i)
+    r = get("/v1/cross-asset", "builder").json()
+    assert r["us_equities"]["SPY"]["flow_skew"] == "THIN_SAMPLE" and r["us_equities"]["SPY"]["trades_5m"] == 4

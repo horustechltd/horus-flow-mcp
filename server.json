@@ -1,12 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "pro.horustek/horus-flow-mcp",
-  "description": "Crypto order flow, cross-venue derivatives and US session context for AI agents, with a live track record.",
+  "description": "Crypto order flow, cross-venue derivatives and US market context for AI agents, with a track record.",
   "repository": {
     "url": "https://github.com/horustechltd/horus-flow-mcp",
     "source": "github"
   },
-  "version": "3.1.0",
+  "version": "3.1.1",
   "packages": [
     {
       "registryType": "pypi",

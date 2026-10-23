@@ -4,7 +4,8 @@ import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.auth import verify_api_key, require_tier
+from app.auth import verify_api_key, require_tier, tier_level
+from app.config import FREE_TIER_SYMBOLS
 from app.models import FlowResponse, ENGINE_VERSION
 from app.interpreters.flow_interpreter import interpret_flow
 from app.feeds.binance_ws import ws_manager
@@ -17,27 +18,48 @@ router = APIRouter()
 async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
 
-    # ⚡ Fast path: check Redis cache first (2s TTL)
+    if tier_level(auth.get("tier")) == 0 and clean_symbol not in FREE_TIER_SYMBOLS:
+        raise HTTPException(status_code=403, detail={
+            "error": "upgrade_required", "required_plan": "BUILDER",
+            "message": f"The free plan covers {', '.join(sorted(FREE_TIER_SYMBOLS))}. Other pairs need the BUILDER plan or higher.",
+        })
+
+    # ⚡ Fast path: Redis cache (2s TTL). Keep the original timestamp so freshness is honest.
     cached = await redis_manager.get_cached_response(clean_symbol)
     if cached:
-        cached["timestamp"] = time.time()  # Fresh timestamp
+        ts = cached.get("timestamp") or time.time()
+        cached["freshness_ms"] = int(max(0.0, time.time() - ts) * 1000)
         return FlowResponse(**cached)
 
-    added = ws_manager.add_symbol(clean_symbol)
+    status = ws_manager.add_symbol(clean_symbol)
+    if status == "invalid":
+        raise HTTPException(status_code=404, detail={"error": "unknown_symbol",
+                                                     "message": f"{clean_symbol} is not a trading spot pair on Binance."})
+    if status == "unavailable":
+        raise HTTPException(status_code=503, detail={"error": "symbol_list_loading",
+                                                     "message": "Symbol list is loading. Retry in a few seconds."})
+    if status == "capacity":
+        raise HTTPException(status_code=503, detail={"error": "tracking_capacity_reached",
+                                                     "message": "Live tracking capacity reached. Try again later."})
+    if status == "added":
+        raise HTTPException(status_code=202, detail="Symbol just added to live tracking. Data arrives within seconds. Retry in 5 seconds.")
 
+    response_data = await build_flow_response(clean_symbol)
+    await redis_manager.set_cached_response(clean_symbol, response_data)
+    return FlowResponse(**response_data)
+
+
+async def build_flow_response(clean_symbol: str, update_oscillation: bool = True) -> dict:
+    """Compute the flow document for a tracked symbol. Raises HTTPException(503) when data is missing."""
     imb = ws_manager.imbalance.get_imbalance(clean_symbol)
     flow = ws_manager.flow.get_delta(clean_symbol)
 
     if not imb or not flow:
-        if added:
-            raise HTTPException(
-                status_code=202,
-                detail="Symbol just added to tracking. Gathering flow data... Retry in 5 seconds."
-            )
         raise HTTPException(
             status_code=503,
             detail="Insufficient flow data for this symbol right now. Try again shortly."
         )
+    symbol = clean_symbol
 
     global_state = ws_manager.stress_index.state.value
 
@@ -85,7 +107,7 @@ async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
 
     interpretation = interpret_flow(clean_symbol, imb, flow, global_state, wiseman_climate, whale_intent=fi_dict)
 
-    if interpretation["confidence"] >= 0.50:
+    if update_oscillation and interpretation["confidence"] >= 0.50:
         desc = interpretation.get("description", "")
         forecast_str = interpretation["signal"] # Fallback
         
@@ -158,18 +180,8 @@ async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
     if fi_dict:
         response_data["whale_intent"] = fi_dict
 
-    # ⚡ Cache response + push to history (non-blocking)
-    await redis_manager.set_cached_response(clean_symbol, response_data)
-    await redis_manager.push_history(clean_symbol, {
-        "signal": response_data["signal"],
-        "action": response_data["action"],
-        "direction_bias": response_data["direction_bias"],
-        "confidence": response_data["confidence"],
-        "market_state": response_data["market_state"],
-        "risk": response_data["risk"],
-    })
-
-    return FlowResponse(**response_data)
+    response_data["metrics"]["price"] = ws_manager.flow.last_price(clean_symbol)
+    return response_data
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -179,16 +191,19 @@ async def get_flow_signal(symbol: str, auth: dict = Depends(verify_api_key)):
 @router.get("/{symbol}/history")
 async def get_flow_history(
     symbol: str,
-    minutes: int = Query(default=30, ge=1, le=60, description="Lookback period in minutes"),
-    auth: dict = Depends(require_tier("PRO"))
+    minutes: int = Query(default=30, ge=1, le=1440, description="Lookback in minutes (BUILDER up to 60, PRO up to 1440)"),
+    auth: dict = Depends(require_tier("BUILDER"))
 ):
     """
     🦅 Flow History — Returns the last N minutes of orderflow snapshots.
     
-    Each snapshot includes the signal, confidence, market state, and risk
-    at that point in time. Useful for AI agents to detect pressure trends.
+    Snapshots are recorded every 15 seconds for every tracked symbol and include
+    the signal fields plus price, deltas, ratios and depth metrics.
     """
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
+    if minutes > 60 and tier_level(auth.get("tier")) < 2:
+        raise HTTPException(status_code=403, detail={"error": "upgrade_required", "required_plan": "PRO",
+                                                     "message": "History beyond 60 minutes needs the PRO plan."})
 
     history = await redis_manager.get_history(clean_symbol, minutes)
 

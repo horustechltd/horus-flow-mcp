@@ -8,9 +8,10 @@ import time
 import asyncio
 import logging
 import websockets
-from typing import Set
+import aiohttp
+from typing import Set, Dict
 
-from app.config import BINANCE_WS_BASE, TRACKED_SYMBOLS_CRYPTO
+from app.config import BINANCE_WS_BASE, TRACKED_SYMBOLS_CRYPTO, MAX_TRACKED_CRYPTO_SYMBOLS
 from app.engines.imbalance import ImbalanceCalculator
 from app.engines.flow_detector import FlowDetector
 from app.engines.market_stress import MarketStressIndex
@@ -33,6 +34,42 @@ class BinanceWSManager:
         
         # Track active subscriptions to avoid spamming
         self._active_subs = set()
+
+        # Spot symbols currently TRADING on Binance (filled by refresh_market_info_loop).
+        # Empty set = not loaded yet; new symbols are refused until it loads.
+        self.valid_symbols: Set[str] = set()
+        self.quote_volume_24h: Dict[str, float] = {}
+        self.market_info_updated_at: float = 0.0
+        self.reconnects = 0
+
+    async def refresh_market_info_loop(self):
+        """Load the list of tradable spot symbols (every 6h) and 24h quote volumes (every 10 min)."""
+        last_exchange_info = 0.0
+        async with aiohttp.ClientSession() as session:
+            while True:
+                try:
+                    now = time.time()
+                    if now - last_exchange_info > 6 * 3600 or not self.valid_symbols:
+                        async with session.get("https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT",
+                                               timeout=aiohttp.ClientTimeout(total=20)) as r:
+                            if r.status == 200:
+                                info = await r.json()
+                                syms = {x["symbol"] for x in info.get("symbols", []) if x.get("status") == "TRADING"}
+                                if syms:
+                                    self.valid_symbols = syms
+                                    last_exchange_info = now
+                    async with session.get("https://api.binance.com/api/v3/ticker/24hr",
+                                           timeout=aiohttp.ClientTimeout(total=20)) as r:
+                        if r.status == 200:
+                            rows = await r.json()
+                            vols = {x["symbol"]: float(x.get("quoteVolume") or 0) for x in rows}
+                            if vols:
+                                self.quote_volume_24h = vols
+                                self.flow.set_quote_volumes(vols)
+                                self.market_info_updated_at = time.time()
+                except Exception as e:
+                    logger.error(f"Market info refresh error: {e}")
+                await asyncio.sleep(600 if self.valid_symbols else 30)
 
     async def _handle_message(self, message: str):
         self._last_msg_time = time.time()
@@ -139,6 +176,7 @@ class BinanceWSManager:
                             
             except websockets.exceptions.ConnectionClosed:
                 logger.warning("WS Connection closed. Reconnecting in 3s...")
+                self.reconnects += 1
                 await asyncio.sleep(3)
             except Exception as e:
                 logger.error(f"WS Error: {e}")
@@ -147,18 +185,31 @@ class BinanceWSManager:
     def stop(self):
         self._running = False
         
-    def add_symbol(self, symbol: str) -> bool:
-        """Dynamically add symbol if not tracked. Returns True if added."""
-        # Convert BTC/USDT to BTCUSDT if needed
+    def add_symbol(self, symbol: str) -> str:
+        """
+        Start tracking a symbol. Returns one of:
+          "exists"   already tracked
+          "added"    added and subscribed live (data arrives within seconds)
+          "invalid"  not a TRADING spot symbol on Binance
+          "capacity" tracking limit reached
+          "unavailable" the Binance symbol list has not loaded yet
+        """
         clean_symbol = symbol.replace("/", "").replace("-", "").upper()
-        if clean_symbol not in self.symbols:
-            self.symbols.add(clean_symbol)
-            # We must schedule the subscription logic on the async loop.
-            # In FastAPI, we can assume this will be called from an async path, 
-            # so we'll just handle it by letting the WS reconnect or explicitly sending SUB.
-            # For MVP, we will only track BTCUSDT initially anyway.
-            return True
-        return False
+        if clean_symbol in self.symbols:
+            return "exists"
+        if not self.valid_symbols:
+            return "unavailable"
+        if clean_symbol not in self.valid_symbols:
+            return "invalid"
+        if len(self.symbols) >= MAX_TRACKED_CRYPTO_SYMBOLS:
+            return "capacity"
+        self.symbols.add(clean_symbol)
+        if self.ws is not None and self._running:
+            try:
+                asyncio.get_running_loop().create_task(self._subscribe({clean_symbol}))
+            except RuntimeError:
+                pass  # no running loop: the next reconnect subscribes it
+        return "added"
 
 # Singleton instance
 ws_manager = BinanceWSManager()

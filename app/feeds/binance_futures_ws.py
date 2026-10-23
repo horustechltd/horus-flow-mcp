@@ -31,7 +31,8 @@ class BinanceFuturesManager:
 
     def __init__(self):
         self._running = False
-        self._symbols: Set[str] = {"BTCUSDT"}
+        # Derivatives intelligence is published for these symbols (see derivatives_publisher.py)
+        self._symbols: Set[str] = {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
         self._http_session = None
 
     async def start(self):

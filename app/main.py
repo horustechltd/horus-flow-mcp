@@ -29,6 +29,10 @@ from app.redis_client import redis_manager
 from app.database import log_usage
 from app.wiseman_publisher import wiseman_publisher_loop
 from app.ignition_publisher import ignition_publisher_loop
+from app.config import TEST_INSTANCE
+from app.derivatives_publisher import derivatives_publisher_loop, KEY_COMPOSITE
+from app.history_recorder import history_recorder_loop
+from app.status_monitor import status_monitor_loop, public_status
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -40,21 +44,34 @@ async def lifespan(app: FastAPI):
     logger.info("Starting up resources...")
     await redis_manager.connect()
     ws_task = asyncio.create_task(start_ws())
-    alp_task = asyncio.create_task(start_alpaca_ws())
     futures_task = asyncio.create_task(futures_manager.start())
-    wiseman_task = asyncio.create_task(wiseman_publisher_loop(redis_manager))
-    ignition_task = asyncio.create_task(ignition_publisher_loop(redis_manager))
+    background = [
+        asyncio.create_task(ws_manager.refresh_market_info_loop()),
+        asyncio.create_task(derivatives_publisher_loop(redis_manager)),
+        asyncio.create_task(history_recorder_loop()),
+        asyncio.create_task(status_monitor_loop()),
+    ]
+    alp_task = None
+    if TEST_INSTANCE:
+        # A test instance must not write keys shared with the trading platform
+        # (WiseMan climate, ignition) nor take the single Alpaca WS connection.
+        logger.warning("HORUS_TEST_INSTANCE=1: WiseMan/ignition publishers and Alpaca WS disabled")
+    else:
+        alp_task = asyncio.create_task(start_alpaca_ws())
+        background.append(asyncio.create_task(wiseman_publisher_loop(redis_manager)))
+        background.append(asyncio.create_task(ignition_publisher_loop(redis_manager)))
     yield
     # Shutdown
     logger.info("Shutting down resources...")
-    wiseman_task.cancel()
-    ignition_task.cancel()
+    for t in background:
+        t.cancel()
     await redis_manager.disconnect()
     ws_manager.stop()
     alpaca_ws_manager.stop()
     futures_manager.stop()
     await ws_task
-    await alp_task
+    if alp_task:
+        await alp_task
     await futures_task
 
 app = FastAPI(
@@ -131,6 +148,51 @@ app.mount("/site", StaticFiles(directory="static/site", html=True), name="brand-
 
 # Mount Original Dashboard Interface
 app.mount("/dash", StaticFiles(directory="static", html=True), name="static")
+
+@app.get("/v1/status", tags=["System"])
+async def service_status():
+    """Public status: freshness and uptime of every data source behind the API. No key required."""
+    return await public_status()
+
+
+_preview_cache = {"ts": 0.0, "data": None}
+
+
+@app.get("/v1/public/preview", tags=["System"])
+async def public_preview():
+    """
+    Small public sample for the website (no key, cached 30s):
+    BTC flow signal, Cortex regime and BTC composite score.
+    """
+    now = time.time()
+    if _preview_cache["data"] and now - _preview_cache["ts"] < 30:
+        return _preview_cache["data"]
+    out = {"generated_at": now, "flow": None, "cortex": None, "composite": None}
+    try:
+        from app.routes.flow import build_flow_response
+        f = await build_flow_response("BTCUSDT", update_oscillation=False)
+        out["flow"] = {"symbol": "BTCUSDT", "signal": f["signal"], "direction_bias": f["direction_bias"],
+                       "confidence": f["confidence"], "delta_30s": f["metrics"].get("delta_30s"),
+                       "buy_sell_ratio": f["metrics"].get("buy_sell_ratio")}
+    except Exception:
+        pass
+    if redis_manager.redis:
+        try:
+            raw = await redis_manager.redis.get("horus:maestro:state")
+            if raw:
+                c = json.loads(raw)
+                out["cortex"] = {"regime_state": c.get("state"), "trust_score": c.get("trust_score"),
+                                 "btc_price": c.get("btc_price")}
+            raw = await redis_manager.redis.get(KEY_COMPOSITE.format("BTCUSDT"))
+            if raw:
+                comp = json.loads(raw)
+                if now - float(comp.get("timestamp", 0)) < 180:
+                    out["composite"] = {"composite_score": comp.get("composite_score"), "verdict": comp.get("verdict")}
+        except Exception:
+            pass
+    _preview_cache.update(ts=now, data=out)
+    return out
+
 
 @app.get("/health", tags=["System"])
 async def health_check():

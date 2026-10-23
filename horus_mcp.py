@@ -43,7 +43,27 @@ _args = _parser.parse_args()
 
 # ─── Configuration ────────────────────────────────────────
 HORUS_API_BASE = "http://127.0.0.1:8011"
-HORUS_API_KEY = "horus-demo-key-2026"
+import os
+from pathlib import Path
+
+
+def _env_from_file(name: str) -> str:
+    """Read one variable from the environment or /root/horus_flow_api/.env (no dotenv dependency)."""
+    if os.getenv(name):
+        return os.getenv(name)
+    env_path = Path(__file__).parent / ".env"
+    try:
+        for line in env_path.read_text().splitlines():
+            if line.strip().startswith(name + "="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
+# This server is reachable from the internet, so it uses a public-tier key
+# (FLOW_API_TIER_n=mcp_public). Paid endpoints answer with an upgrade message.
+HORUS_API_KEY = _env_from_file("FLOW_MCP_KEY")
 HEADERS = {"X-API-Key": HORUS_API_KEY}
 
 # ─── MCP Server Instance ─────────────────────────────────
@@ -71,11 +91,15 @@ async def _fetch(endpoint: str) -> dict:
         )
         if resp.status_code == 200:
             return resp.json()
-        return {
-            "error": True,
-            "status_code": resp.status_code,
-            "detail": resp.text,
-        }
+        try:
+            detail = resp.json().get("detail", resp.text)
+        except Exception:
+            detail = resp.text
+        out = {"error": True, "status_code": resp.status_code, "detail": detail}
+        if resp.status_code == 403:
+            out["hint"] = ("This hosted server runs on the free tier. Use your own API key with the "
+                           "horus-flow-mcp package (RAPIDAPI_KEY) for paid endpoints.")
+        return out
 
 
 # ─── Tool 1: Crypto Flow ─────────────────────────────────

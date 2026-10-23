@@ -37,7 +37,10 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 FLOW_API_URL = os.getenv("FLOW_API_URL", "http://127.0.0.1:8011")
-FLOW_API_KEY = os.getenv("FLOW_API_KEY", "horus-trader-key-2026")
+FLOW_API_KEY = os.getenv("FLOW_API_KEY", "")  # internal service key, set in .env
+if not FLOW_API_KEY:
+    logging.getLogger("HorusPulse").error("FLOW_API_KEY is not set in /root/horus_flow_api/.env; API calls will be rejected.")
+
 
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 DB_PATH = Path("/root/horus_flow_api/calibration_data/pulse_ledger.db")
@@ -229,7 +232,7 @@ class HorusHourlyPulse:
         for sym in SYMBOLS:
             t24 = self._get_binance_24hr(sym)
             flow = self._get_flow_microstructure(sym)
-            heatmap = self._get_json(f"horus:liq_heatmap:{sym}")
+            heatmap = self._get_json(f"horus:api:liq_heatmap:{sym}")  # API-owned, expires when stale
 
             price = t24["price"]
             high_24h = t24["high_24h"]

@@ -21,6 +21,32 @@ class FlowDetector:
     def __init__(self):
         self._trades: Dict[str, deque] = {}   # {symbol: deque of trade records}
         self._max_history = 5000               # Keep last 5000 trades per symbol (covers ~5 mins of heavy flow)
+        # 24h quote volume per symbol (USD), refreshed by the WS manager.
+        # Used to size the "large trade" threshold relative to each market.
+        self._quote_volume_24h: Dict[str, float] = {}
+
+    # A trade counts as "large" when it exceeds 1/20,000 of the symbol's 24h volume,
+    # clamped to [$10K, $250K]. Without volume data the legacy $50K threshold applies.
+    LARGE_TRADE_VOLUME_FRACTION = 1 / 20000
+    LARGE_TRADE_MIN_USD = 10_000
+    LARGE_TRADE_MAX_USD = 250_000
+    LARGE_TRADE_DEFAULT_USD = 50_000
+    LARGE_SELL_WINDOW_S = 300
+
+    def set_quote_volumes(self, volumes: Dict[str, float]):
+        if volumes:
+            self._quote_volume_24h = dict(volumes)
+
+    def large_trade_threshold(self, symbol: str) -> float:
+        vol = self._quote_volume_24h.get(symbol)
+        if not vol:
+            return float(self.LARGE_TRADE_DEFAULT_USD)
+        thr = vol * self.LARGE_TRADE_VOLUME_FRACTION
+        return float(min(max(thr, self.LARGE_TRADE_MIN_USD), self.LARGE_TRADE_MAX_USD))
+
+    def last_price(self, symbol: str) -> float:
+        trades = self._trades.get(symbol)
+        return trades[-1]["price"] if trades else 0.0
     
     def feed(self, symbol: str, price: float, qty: float, is_buyer_maker: bool, timestamp: float = None):
         """
@@ -55,6 +81,7 @@ class FlowDetector:
         
         now = time.time()
         trades = list(self._trades[symbol])
+        large_thr = self.large_trade_threshold(symbol)
         
         # Calculate deltas over windows
         delta_5s = 0.0
@@ -91,8 +118,8 @@ class FlowDetector:
                         if t["is_sell"]:
                             sell_notional_5s += t["notional"]
                 
-                # Large sell: single trade > $50K notional (adjust for BTC scale)
-                if t["is_sell"] and t["notional"] > 50_000:
+                # Large sell: single trade above the symbol's size threshold, last 5 minutes
+                if t["is_sell"] and t["notional"] > large_thr:
                     large_sell_count += 1
         
         total_vol_30s = buy_vol_30s + sell_vol_30s
@@ -162,6 +189,8 @@ class FlowDetector:
             "buy_ratio": buy_ratio,
             "sell_spike": sell_spike,
             "large_sell_count": large_sell_count,
+            "large_trade_threshold_usd": round(large_thr, 0),
+            "large_sell_window_s": self.LARGE_SELL_WINDOW_S,
             "delta_declining": delta_declining,
             "trade_count_30s": total_count_30s,
             "avg_trade_size": avg_trade_size,

@@ -85,7 +85,7 @@ The Cognitive Market Brain for Autonomous Trading Agents (7 Evidence Families, M
 
 ### 📄 Overview:
 ```markdown
-Horus Flow MCP connects Claude Desktop, Cursor IDE, and autonomous agents directly to a sub-millisecond market gravity engine. 
+Horus Flow MCP connects Claude Desktop, Cursor IDE, and autonomous agents directly to a real-time market microstructure engine built on Binance public data. 
 
 Instead of confusing your LLM with raw, noisy candlestick data, Horus provides high-conviction decision matrices:
 - **`get_horus_cortex()`**: Complete cognitive synthesis of 7 forensic families with penalized trust scores and machine action multipliers.

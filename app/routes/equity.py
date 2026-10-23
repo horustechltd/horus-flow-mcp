@@ -3,14 +3,38 @@
 Horus Flow Signal API — equity.py routes
 """
 import time
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import verify_api_key, require_tier
-from app.models import FlowResponse
+from app.models import FlowResponse, ENGINE_VERSION
 from app.interpreters.flow_interpreter import interpret_flow
 from app.feeds.alpaca_ws import alpaca_ws_manager
 
 router_equity = APIRouter()
+
+# Alpaca's free feed is IEX only. IEX prints were 2.4%-3.6% of US consolidated
+# volume for SPY and NVDA in October 2026, so every equity reading is a sample.
+DATA_SOURCE = {
+    "feed": "IEX via Alpaca",
+    "coverage_note": "IEX is roughly 3% of US consolidated volume. Ratios and prints are a sample of the tape, not the full market.",
+}
+
+# Signals too strong to assert from a ~3% sample; downgraded to plain pressure
+_EXTREME_BEARISH = {"EMERGENCY_DUMP", "LIQUIDATION_CASCADE", "DEPTH_COLLAPSE", "WHALE_DUMP", "IMMINENT_DUMP_5M",
+                    "SELL_SPIKE", "INSTITUTIONAL_DISTRIBUTION", "WHALE_EXIT", "STRONG_SELL_PRESSURE"}
+_EXTREME_BULLISH = {"SHORT_SQUEEZE", "IMMINENT_PUMP_5M", "STRONG_BUY_PRESSURE"}
+EQUITY_MAX_CONFIDENCE = 0.6
+
+
+def _spy_mode(buy_ratio: float) -> str:
+    if buy_ratio < 0.35:
+        return "SELL_SKEW_STRONG"
+    if buy_ratio < 0.45:
+        return "SELL_SKEW"
+    if buy_ratio > 0.65:
+        return "BUY_SKEW"
+    return "BALANCED"
 
 @router_equity.get("/macro-blocks", tags=["Equity Flow"])
 async def get_macro_blocks(auth: dict = Depends(require_tier("FREE"))):
@@ -23,14 +47,7 @@ async def get_macro_blocks(auth: dict = Depends(require_tier("FREE"))):
     spy_buy_ratio = 0.5
     if spy_flow:
         spy_buy_ratio = spy_flow.get("buy_ratio", 0.5)
-        if spy_buy_ratio < 0.35:
-            market_mode = "DUMP (CRITICAL)"
-        elif spy_buy_ratio < 0.45:
-            market_mode = "CHOP (FRAGILE)"
-        elif spy_buy_ratio > 0.65:
-            market_mode = "BULLISH (ROBUST)"
-        else:
-            market_mode = "RANGE_BOUND (NORMAL)"
+        market_mode = _spy_mode(spy_buy_ratio)
 
     blocks = []
     current_time = time.time()
@@ -50,16 +67,20 @@ async def get_macro_blocks(auth: dict = Depends(require_tier("FREE"))):
     
     return {
         "timestamp": current_time,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "spy_macro_climate": {
             "market_mode": market_mode,
-            "spy_buy_ratio": round(spy_buy_ratio, 2)
+            "spy_buy_ratio": round(spy_buy_ratio, 2),
+            "window": "aggressive IEX trades, last 30s",
         },
         "recent_block_trades": blocks,
-        "block_count": len(blocks)
+        "block_count": len(blocks),
+        "block_definition": "single IEX print with notional >= $200,000 in the last 5 minutes",
+        "data_source": DATA_SOURCE,
     }
 
 @router_equity.get("/{symbol}", response_model=FlowResponse)
-async def get_equity_flow_signal(symbol: str, auth: dict = Depends(require_tier("ULTRA"))):
+async def get_equity_flow_signal(symbol: str, auth: dict = Depends(require_tier("BUILDER"))):
     """
     Get live orderflow signal for a specific US Equity symbol via IEX.
     """
@@ -87,18 +108,15 @@ async def get_equity_flow_signal(symbol: str, auth: dict = Depends(require_tier(
     global_state = "NORMAL"
     wiseman_climate = {"market_mode": "RANGE_BOUND", "health": "NORMAL", "confidence": 0.50}
     
-    if spy_flow and symbol != "SPY":
+    if spy_flow and clean_symbol != "SPY":
+        # SPY skew from the IEX sample informs context only; it never escalates to a liquidity event.
         spy_buy_ratio = spy_flow.get("buy_ratio", 0.5)
-        # Check delta velocity and ratio
-        if spy_buy_ratio < 0.35:
-            global_state = "LIQUIDITY_EVENT"
-            wiseman_climate = {"market_mode": "DUMP", "health": "CRITICAL", "confidence": 0.99}
-        elif spy_buy_ratio < 0.45:
+        if spy_buy_ratio < 0.45:
             global_state = "PRESSURE"
-            wiseman_climate = {"market_mode": "CHOP", "health": "FRAGILE", "confidence": 0.85}
+            wiseman_climate = {"market_mode": "CHOP", "health": "FRAGILE", "confidence": 0.5}
         elif spy_buy_ratio > 0.65:
             global_state = "ACCUMULATION"
-            wiseman_climate = {"market_mode": "BULLISH", "health": "ROBUST", "confidence": 0.80}
+            wiseman_climate = {"market_mode": "BULLISH", "health": "NORMAL", "confidence": 0.5}
 
     # Handle US Market Closed hours
     if flow.get("trade_count_30s", 0) == 0:
@@ -115,24 +133,44 @@ async def get_equity_flow_signal(symbol: str, auth: dict = Depends(require_tier(
 
     interpretation = interpret_flow(clean_symbol, imb, flow, global_state, wiseman_climate)
     
-    # 🐋 Institutional Block Trade Injection
+    # Large prints on IEX (>= $200k)
     blocks = alpaca_ws_manager.block_trades.get(clean_symbol, [])
-    recent_blocks = [b for b in blocks if (time.time() - b["ts"]) <= 60]  # inside last 60s
+    recent_blocks = [b for b in blocks if (time.time() - b["ts"]) <= 60]
     if recent_blocks:
-        interpretation["metrics"]["flags"].append(f"INSTITUTIONAL_BLOCK_TRADE(count={len(recent_blocks)})")
-        interpretation["description"] += f" 🐋 Warning/Notice: {len(recent_blocks)} Institutional block trade(s) detected (>$200k each) in last 60s."
-        # Bump confidence of the prevailing signal if blocks confirm it
-        interpretation["confidence"] = min(0.99, interpretation["confidence"] + 0.10)
-    
+        interpretation["metrics"]["flags"].append(f"LARGE_IEX_PRINTS(count={len(recent_blocks)})")
+        interpretation["description"] += f" {len(recent_blocks)} IEX print(s) of $200k or more in the last 60s."
+
+    # Downgrade signals that a ~3% sample cannot support
+    signal = interpretation["signal"]
+    action = interpretation.get("action", "WAIT")
+    bias = interpretation.get("direction_bias", "NEUTRAL")
+    risk = interpretation["risk"]
+    if signal in _EXTREME_BEARISH:
+        signal, action, bias = "SELL_PRESSURE", "BLOCK_LONG", "BEARISH"
+    elif signal in _EXTREME_BULLISH:
+        signal, action, bias = "BUY_PRESSURE", "BLOCK_SHORT", "BULLISH"
+    if risk == "EXTREME":
+        risk = "HIGH"
+    interpretation["metrics"]["flags"].append("IEX_SAMPLE")
+    interpretation["metrics"]["spy_buy_ratio_iex"] = round(spy_flow.get("buy_ratio", 0.5), 3) if spy_flow else None
+
     response = FlowResponse(
-        symbol=symbol,
-        signal=interpretation["signal"],
-        confidence=interpretation["confidence"],
+        symbol=clean_symbol,
+        signal=signal,
+        action=action,
+        direction_bias=bias,
+        confidence=min(EQUITY_MAX_CONFIDENCE, interpretation["confidence"]),
+        risk=risk,
+        market_regime=interpretation.get("market_regime", "RANGING"),
+        engine_version=ENGINE_VERSION,
+        freshness_ms=0,
+        timestamp_utc=datetime.now(timezone.utc).isoformat(),
+        explanation=interpretation.get("explanation", "") + " [IEX sample, ~3% of US volume]",
         market_state=interpretation["market_state"],
-        risk=interpretation["risk"],
         description=interpretation["description"],
         metrics=interpretation["metrics"],
+        data_source=DATA_SOURCE,
         timestamp=time.time()
     )
-    
+
     return response

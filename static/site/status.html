@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horus Flow Status</title>
+<meta name="description" content="Live freshness and uptime of every data source behind the Horus Flow API.">
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e4e3df;
+    --ok: #1f7a4d; --down: #b42318; --closed: #8a6d1d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e0f12; --panel: #16181d; --text: #ecebe7; --muted: #9a9890; --line: #2a2d34;
+            --ok: #4cc38a; --down: #f97066; --closed: #d6b14a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .overall { padding: 14px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line);
+             font-weight: 600; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .ok { background: var(--ok); } .down { background: var(--down); } .closed { background: var(--closed); }
+  .unknown { background: var(--muted); }
+  .row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+         margin-bottom: 10px; }
+  .row-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .name { display: flex; gap: 10px; align-items: center; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .eps { color: var(--muted); font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 6px;
+         overflow-wrap: anywhere; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Horus Flow API status</h1>
+  <p class="sub">Freshness and uptime of each data source. Endpoints refuse to serve data older than their limit.</p>
+  <div class="overall" id="overall"><span class="dot unknown"></span><span>Loading…</span></div>
+  <div id="list"></div>
+  <footer id="foot"></footer>
+</main>
+<script>
+const fmtAge = s => s == null ? "no data" : s < 120 ? `${s}s ago` : s < 7200 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
+const fmtPct = v => v == null ? "–" : `${v.toFixed(2)}%`;
+const label = { ok: "Operational", down: "Down", closed: "Market closed", unknown: "Unknown" };
+function esc(t) { const d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+async function load() {
+  try {
+    const r = await fetch("/v1/status", { cache: "no-store" });
+    const d = await r.json();
+    const ok = d.overall === "operational";
+    document.getElementById("overall").innerHTML =
+      `<span class="dot ${ok ? "ok" : "down"}"></span><span>${ok ? "All systems operational" : "Some data sources are degraded"}</span>`;
+    document.getElementById("list").innerHTML = d.components.map(c => `
+      <div class="row">
+        <div class="row-head">
+          <div class="name"><span class="dot ${esc(c.status)}"></span>${esc(c.label)}</div>
+          <div class="meta">${label[c.status] || esc(c.status)} · updated ${fmtAge(c.age_seconds)}${c.max_age_seconds ? ` · limit ${c.max_age_seconds}s` : ""}</div>
+        </div>
+        <div class="meta">Uptime 24h ${fmtPct(c.uptime_24h_pct)} · 7 days ${fmtPct(c.uptime_7d_pct)}</div>
+        <div class="eps">${c.endpoints.map(esc).join("  ")}</div>
+      </div>`).join("");
+    document.getElementById("foot").textContent = `Generated ${new Date(d.generated_at).toLocaleString()}. ${d.note}`;
+  } catch (e) {
+    document.getElementById("overall").innerHTML = `<span class="dot down"></span><span>Status endpoint unreachable</span>`;
+  }
+}
+load(); setInterval(load, 30000);
+</script>
+</body>
+</html>

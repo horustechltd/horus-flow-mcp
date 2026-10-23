@@ -9,9 +9,8 @@
   </p>
 
   <p>
-    <img src="https://img.shields.io/badge/Quality-A--Tier%20Verified-gold?style=for-the-badge&logo=ai" alt="A-Tier">
     <img src="https://img.shields.io/badge/Protocol-FastMCP%202.0-purple?style=for-the-badge&logo=anthropic" alt="FastMCP">
-    <img src="https://img.shields.io/badge/Latency-Sub--Millisecond-brightgreen?style=for-the-badge&logo=speedtest" alt="Latency">
+    <a href="https://flow.horustek.pro/status.html"><img src="https://img.shields.io/badge/Status-live%20page-brightgreen?style=for-the-badge" alt="Status"></a>
     <img src="https://img.shields.io/badge/Python-3.12+-blue?style=for-the-badge&logo=python" alt="Python">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License">
   </p>
@@ -90,9 +89,9 @@ graph TD
     classDef client fill:#FF3366,stroke:#fff,color:#fff,stroke-width:2px;
 
     %% Ingestion
-    subgraph Data_Pipelines [Sub-Millisecond Websocket Ingestion]
+    subgraph Data_Pipelines [Websocket Ingestion]
         B[Binance WSS <br/> L1/L2 Book]:::crypto_stream
-        A[Alpaca WSS <br/> SIP Equities]:::equity_stream
+        A[Alpaca WSS <br/> IEX Equities - sample]:::equity_stream
         BF[Binance Futures <br/> OI / Funding / Liquidations]:::crypto_stream
     end
 
@@ -155,26 +154,29 @@ graph TD
 ### Level 1-2: Orderflow Microstructure
 | Endpoint | Method | Description | Tier |
 |:---|:---|:---|:---|
-| `/v1/flow/crypto/{symbol}` | `GET` | Real-time orderbook imbalance, taker flow, and whale intent | Free / Trader |
-| `/v1/flow/crypto/{symbol}/history` | `GET` | Flow history (1-60 min lookback) for backtesting | Trader |
-| `/v1/flow/equity/{symbol}` | `GET` | US Equity institutional tape (SIP) | Trader |
-| `/v1/flow/equity/macro-blocks` | `GET` | SPY macro block trades & sentiment | Trader |
+| `/v1/flow/crypto/{symbol}` | `GET` | Order book imbalance (top 20 levels) and taker flow from Binance's public stream. Any TRADING spot pair | Free: BTCUSDT, ETHUSDT · Builder: all pairs |
+| `/v1/flow/crypto/{symbol}/history` | `GET` | Snapshots every 15s with price, deltas and ratios | Builder: 60 min · Pro: 24 h |
+| `/v1/flow/equity/{symbol}` | `GET` | US equity flow from the IEX feed (about 3% of US volume, a sample) | Builder |
+| `/v1/flow/equity/macro-blocks` | `GET` | SPY buy/sell skew and IEX prints of $200k or more | Free |
+| `/v1/status` | `GET` | Freshness and uptime of every data source (no key) | Public |
 
 ### Level 3: Forensic Market Intelligence
 | Endpoint | Method | Description | Tier |
 |:---|:---|:---|:---|
-| `/v1/intelligence/climate` | `GET` | WiseMan macro market regime & health score | Trader |
-| `/v1/intelligence/ignitions` | `GET` | Volatility Breakout Engine (VBE) scanner | Trader |
-| `/v1/intelligence/liquidation-heatmap` | `GET` | Liquidation cascade zones & gravity vector | Pro ($149) |
-| `/v1/intelligence/cross-exchange-flow` | `GET` | Spot vs Futures volume ratio & OI velocity | Pro ($149) |
-| `/v1/intelligence/composite` | `GET` | 4-layer fused composite score (0-100) | Pro ($149) |
-| `/v1/intelligence/market-intelligence` | `GET` | Complete macro dashboard for all assets in one call | Pro ($149) |
+| `/v1/intelligence/climate` | `GET` | WiseMan BTC regime and health | Builder |
+| `/v1/intelligence/ignitions` | `GET` | Volatility breakout scanner across ~750 assets, refreshed every minute | Builder |
+| `/v1/intelligence/liquidation-heatmap` | `GET` | Crowd positioning vs its 24h median and estimated liquidation levels (BTC, ETH, SOL) | Pro |
+| `/v1/intelligence/cross-exchange-flow` | `GET` | Futures/spot volume ratio vs its 7-day median, premium, funding, OI velocity | Pro |
+| `/v1/intelligence/composite` | `GET` | 0-100 score from climate, ignition, positioning and futures/spot flow | Pro |
+| `/v1/intelligence/market-intelligence` | `GET` | All of the above for BTC, ETH and SOL in one call | Pro |
+
+Every Level 3 document carries a `method` field with its exact formula. Endpoints return `503 data_stale` instead of serving data older than their freshness limit.
 
 ### Level 4: The Sovereign Cognitive Cortex
 | Endpoint | Method | Description | Tier |
 |:---|:---|:---|:---|
-| `/v1/intelligence/cortex` | `GET` | 🧠 **The Master Brain**: 7 evidence families, trust score, contradiction engine, execution boundaries & action policy | Pro ($149) / Institutional |
-| `/v1/intelligence/maestro` | `GET` | Backward-compatible alias for the Cortex endpoint | Pro ($149) / Institutional |
+| `/v1/intelligence/cortex` | `GET` | Regime state, trust score, contradictions, execution boundaries and action policy | Pro |
+| `/v1/intelligence/maestro` | `GET` | Backward-compatible alias for the Cortex endpoint | Pro |
 
 ---
 
@@ -192,7 +194,7 @@ Add this to your `claude_desktop_config.json`:
       "command": "python3",
       "args": ["/absolute/path/to/horus_flow_api/horus_mcp.py", "--transport", "stdio"],
       "env": {
-        "FLOW_API_KEY": "YOUR_HORUS_API_KEY"
+        "FLOW_MCP_KEY": "YOUR_HORUS_API_KEY"
       }
     }
   }
@@ -262,3 +264,7 @@ Explore the live institutional orderflow visualizer at [flow.horustek.pro/dash/]
 
 *Engineered with mathematical rigor for Autonomous AI Agents and Quantitative Traders.*  
 **© 2026 Horus Tech Ltd.** 🦅
+
+---
+
+*mcp-name: pro.horustek/horus-flow-mcp*

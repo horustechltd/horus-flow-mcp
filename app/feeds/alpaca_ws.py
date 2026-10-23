@@ -29,8 +29,11 @@ class AlpacaWSManager:
         self.ws = None
         self._running = False
         self._authenticated = False
+        self.last_msg_time = 0.0
+        self.reconnects = 0
 
     async def _handle_message(self, message: str):
+        self.last_msg_time = time.time()
         try:
             data = json.loads(message)
             if not isinstance(data, list):
@@ -146,6 +149,7 @@ class AlpacaWSManager:
                             
             except websockets.exceptions.ConnectionClosed:
                 logger.warning("Alpaca WS closed. Reconnecting...")
+                self.reconnects += 1
                 self._authenticated = False
                 await asyncio.sleep(3)
             except Exception as e:

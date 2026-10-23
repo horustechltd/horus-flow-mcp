@@ -4,7 +4,6 @@
    ================================================================ */
 
 const API_BASE = window.location.origin;
-const DEMO_KEY = 'horus-demo-key-2026';
 
 // ============ INTERSECTION OBSERVER (Scroll Animations) ============
 const observer = new IntersectionObserver((entries) => {
@@ -44,84 +43,49 @@ window.addEventListener('scroll', () => {
 });
 
 // ============ LIVE DATA FETCHING ============
+// Public preview endpoint: no API key in the browser, cached 30s server-side.
 async function fetchLiveData() {
     try {
-        // Fetch BTC flow signal
-        const flowRes = await fetch(`${API_BASE}/v1/flow/crypto/BTCUSDT?key=${DEMO_KEY}`);
-        if (flowRes.ok) {
-            const flow = await flowRes.json();
-            
-            // Update ticker
+        const res = await fetch(`${API_BASE}/v1/public/preview`);
+        if (!res.ok) throw new Error(`preview ${res.status}`);
+        const p = await res.json();
+
+        if (p.flow) {
             const tickerSignal = document.getElementById('ticker-signal');
             const tickerConf = document.getElementById('ticker-conf');
-            
-            if (tickerSignal && flow.signal) {
-                tickerSignal.textContent = flow.signal;
-                tickerSignal.style.color = flow.signal.includes('BUY') || flow.signal.includes('ABSORPTION')
-                    ? 'var(--accent-green)' 
-                    : flow.signal.includes('DUMP') || flow.signal.includes('EXIT')
+            if (tickerSignal && p.flow.signal) {
+                tickerSignal.textContent = p.flow.signal;
+                tickerSignal.style.color = p.flow.signal.includes('BUY') || p.flow.signal.includes('ABSORPTION')
+                    ? 'var(--accent-green)'
+                    : p.flow.signal.includes('DUMP') || p.flow.signal.includes('EXIT')
                     ? 'var(--accent-red)'
                     : 'var(--gold-primary)';
             }
-            if (tickerConf && flow.confidence !== undefined) {
-                tickerConf.textContent = (flow.confidence * 100).toFixed(0) + '%';
+            if (tickerConf && p.flow.confidence !== undefined) {
+                tickerConf.textContent = (p.flow.confidence * 100).toFixed(0) + '%';
             }
         }
 
-        // Fetch Level 4 Cortex Master Brain
-        const ctxRes = await fetch(`${API_BASE}/v1/intelligence/cortex?key=${DEMO_KEY}`);
-        if (ctxRes.ok) {
-            const cortex = await ctxRes.json();
-            const liveJson = document.getElementById('live-json');
-            if (liveJson) {
-                const displayObj = {
-                    engine: cortex.engine || "Horus Cortex Symphony v3.0",
-                    regime_state: cortex.regime_state || "TRANSITION",
-                    trust_score: cortex.trust_score || 48.0,
-                    action_policy: {
-                        directive: cortex.action_policy?.directive || "Capital Preservation Lock",
-                        reversal_multiplier: cortex.action_policy?.reversal_multiplier ?? 0.5,
-                        ignition_allowed: cortex.action_policy?.ignition_allowed ?? false
-                    },
-                    execution_boundaries: {
-                        btc_price: cortex.execution_boundaries?.btc_price,
-                        invalidation_support: cortex.execution_boundaries?.invalidation_support,
-                        breakout_resistance: cortex.execution_boundaries?.breakout_resistance
-                    },
-                    market_vitals: {
-                        taker_ratio: cortex.market_vitals?.taker_ratio,
-                        global_ignition: cortex.market_vitals?.global_ignition
-                    }
-                };
-                liveJson.innerHTML = formatJSON(displayObj);
-            }
+        const liveJson = document.getElementById('live-json');
+        if (liveJson && (p.flow || p.cortex)) {
+            liveJson.innerHTML = formatJSON({
+                sample: "public preview, refreshed every 30s",
+                flow: p.flow,
+                cortex: p.cortex,
+                composite_btc: p.composite
+            });
         }
 
-        // Fetch composite for stats
-        const compRes = await fetch(`${API_BASE}/v1/intelligence/composite?key=${DEMO_KEY}`);
-        if (compRes.ok) {
-            const comp = await compRes.json();
-            const statSignals = document.getElementById('stat-signals');
-            if (statSignals && comp.composite_score !== undefined) {
-                statSignals.textContent = Math.round(comp.composite_score);
-                statSignals.title = 'Composite Intelligence Score';
-            }
+        const statSignals = document.getElementById('stat-signals');
+        if (statSignals && p.composite && p.composite.composite_score !== undefined) {
+            statSignals.textContent = Math.round(p.composite.composite_score);
+            statSignals.title = 'Composite Intelligence Score (BTCUSDT)';
         }
-
     } catch (err) {
         console.log('Live data fetch info:', err.message);
-        // Show fallback data
         const liveJson = document.getElementById('live-json');
         if (liveJson) {
-            liveJson.innerHTML = `<span class="code-comment">// Connect your API key to see live data</span>
-{
-  <span class="code-gold">"symbol"</span>: <span class="code-string">"BTCUSDT"</span>,
-  <span class="code-gold">"signal"</span>: <span class="code-string">"WHALE_EXIT"</span>,
-  <span class="code-gold">"confidence"</span>: <span class="code-func">0.92</span>,
-  <span class="code-gold">"whale_intent"</span>: <span class="code-string">"SHORT"</span>,
-  <span class="code-gold">"delta_30s"</span>: <span class="code-func">-33023</span>,
-  <span class="code-gold">"verdict"</span>: <span class="code-string">"STAY_OUT"</span>
-}`;
+            liveJson.innerHTML = `<span class="code-comment">// Live preview unavailable right now. See /status.html</span>`;
         }
     }
 }

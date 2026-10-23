@@ -25,6 +25,49 @@ from typing import Optional
 from app.auth import verify_api_key, require_tier
 from app.redis_client import redis_manager
 from app.models import ENGINE_VERSION
+from app.derivatives_publisher import KEY_XFLOW, KEY_HEATMAP, KEY_COMPOSITE
+
+# Maximum data age (seconds) before an endpoint refuses to serve it
+MAX_AGE_DERIVATIVES = 180   # publisher refreshes every 60s
+MAX_AGE_CLIMATE = 900       # WiseMan publishes every ~5 min
+MAX_AGE_IGNITION = 600
+MAX_AGE_CORTEX = 600
+
+
+def _age_seconds(data: dict) -> Optional[float]:
+    """Age of a document from its timestamp_epoch / timestamp / market_clock_iso field."""
+    for field in ("timestamp_epoch", "timestamp", "market_clock_iso"):
+        ts = data.get(field)
+        if isinstance(ts, (int, float)) and ts > 1e9:
+            return max(0.0, time.time() - ts)
+        if isinstance(ts, str) and ts[:2] == "20":
+            try:
+                return max(0.0, time.time() - datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+            except ValueError:
+                continue
+    return None
+
+
+def _reject_if_stale(data: dict, max_age: float, source: str):
+    age = _age_seconds(data)
+    if age is None or age > max_age:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "data_stale",
+                "source": source,
+                "age_seconds": None if age is None else int(age),
+                "max_age_seconds": int(max_age),
+                "message": "The upstream engine has not refreshed this data recently. Not serving stale data.",
+            },
+        )
+    return age
+
+
+async def _incubator_engine_online() -> bool:
+    async for _ in redis_manager.redis.scan_iter("incubator:*", count=500):
+        return True
+    return False
 
 logger = logging.getLogger("API.Intelligence")
 
@@ -56,7 +99,7 @@ router_intelligence = APIRouter()
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/climate", tags=["Intelligence"])
-async def get_market_climate(request: Request, auth: dict = Depends(require_tier("PRO"))):
+async def get_market_climate(request: Request, auth: dict = Depends(require_tier("BUILDER"))):
     """
     🦅 WiseMan Climate Gate — Is the market worth trading right now?
 
@@ -77,6 +120,7 @@ async def get_market_climate(request: Request, auth: dict = Depends(require_tier
             raise HTTPException(status_code=503, detail="WiseMan climate data not available yet")
 
         climate = json.loads(raw)
+        _reject_if_stale(climate, MAX_AGE_CLIMATE, "wiseman_climate")
 
         # Enrich with aggression level
         aggression = await redis_manager.redis.get("horus:aggression:level")
@@ -151,15 +195,15 @@ async def get_market_climate(request: Request, auth: dict = Depends(require_tier
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/ignitions", tags=["Intelligence"])
-async def get_ignitions(request: Request, auth: dict = Depends(require_tier("ULTRA"))):
+async def get_ignitions(request: Request, auth: dict = Depends(require_tier("BUILDER"))):
     """
     🔥 Ignition Scanner — Which coins are about to explode?
 
     Returns the global ignition regime (DORMANT/RISING/IGNITED),
     plus per-coin ignition scores for all tracked assets.
 
-    Ignition Score >= 0.6 = HIGH probability of explosive move.
-    Ignition Score >= 0.8 = EXTREME — institutional-grade signal.
+    Ignition Score is a 0-1 volatility-breakout score (>= 0.6 IGNITED, >= 0.4 WARMING).
+    It ranks assets by breakout conditions; it is not a probability of a move.
     """
 
     if not redis_manager.redis:
@@ -171,6 +215,7 @@ async def get_ignitions(request: Request, auth: dict = Depends(require_tier("ULT
             raise HTTPException(status_code=503, detail="Ignition data not available yet")
 
         state = json.loads(raw)
+        _reject_if_stale(state, MAX_AGE_IGNITION, "global_ignition")
 
         # Get per-coin distribution.
         # NOTE: `horus:ignition_distribution` is published as a Redis HASH
@@ -280,8 +325,7 @@ async def get_court_verdict(symbol: str, request: Request, auth: dict = Depends(
     - Action recommendation (IGNORE/PROBE/FULL_ENTRY)
     - Original signal data with full judicial evidence
 
-    Assets in READY state with FULL_ENTRY action are the ones
-    that achieved 100% win rate on the EdgeBridge strategy.
+    Returns 503 engine_offline when the incubator engine is not publishing.
     """
 
     if not redis_manager.redis:
@@ -294,6 +338,10 @@ async def get_court_verdict(symbol: str, request: Request, auth: dict = Depends(
             if clean.endswith(quote):
                 clean = clean[:-len(quote)] + "/" + quote
                 break
+
+    if not await _incubator_engine_online():
+        raise HTTPException(status_code=503, detail={"error": "engine_offline", "source": "incubator",
+                                                     "message": "The Behavioral Court / Incubator engine is not publishing right now."})
 
     try:
         data = await redis_manager.redis.hgetall(f"incubator:{clean}")
@@ -398,12 +446,15 @@ async def get_incubator_pipeline(request: Request, auth: dict = Depends(require_
     being monitored for a potential rebound entry. Assets in READY state
     are the highest-conviction opportunities.
 
-    This is the intelligence layer behind the EdgeBridge strategy
-    that achieved 6/6 wins (+$3,269) in April 2026.
+    Returns 503 engine_offline when the incubator engine is not publishing.
     """
 
     if not redis_manager.redis:
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
+
+    if not await _incubator_engine_online():
+        raise HTTPException(status_code=503, detail={"error": "engine_offline", "source": "incubator",
+                                                     "message": "The Behavioral Court / Incubator engine is not publishing right now."})
 
     try:
         # Scan all incubator:* keys
@@ -515,11 +566,13 @@ async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
 
     try:
-        raw = await redis_manager.redis.get(f"horus:liq_heatmap:{clean}")
+        raw = await redis_manager.redis.get(KEY_HEATMAP.format(clean))
         if not raw:
-            raise HTTPException(status_code=404, detail=f"No liquidation heatmap data for {clean}. Worker may be starting up.")
+            raise HTTPException(status_code=503, detail={"error": "data_unavailable", "source": "derivatives_publisher",
+                                                         "message": f"No fresh liquidation heatmap for {clean}."})
 
         data = json.loads(raw)
+        _reject_if_stale(data, MAX_AGE_DERIVATIVES, "derivatives_publisher")
         data["data_freshness"] = _check_freshness(data)
         data["engine"] = "Liquidation Heatmap v1.0"
         
@@ -594,11 +647,13 @@ async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
 
     try:
-        raw = await redis_manager.redis.get(f"horus:xflow:{clean}")
+        raw = await redis_manager.redis.get(KEY_XFLOW.format(clean))
         if not raw:
-            raise HTTPException(status_code=404, detail=f"No cross-exchange flow data for {clean}. Worker may be starting up.")
+            raise HTTPException(status_code=503, detail={"error": "data_unavailable", "source": "derivatives_publisher",
+                                                         "message": f"No fresh cross-exchange flow for {clean}."})
 
         data = json.loads(raw)
+        _reject_if_stale(data, MAX_AGE_DERIVATIVES, "derivatives_publisher")
         data["data_freshness"] = _check_freshness(data)
         data["engine"] = "Cross-Exchange Flow v1.0"
         
@@ -685,11 +740,13 @@ async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depen
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
 
     try:
-        raw = await redis_manager.redis.get(f"horus:composite:{clean}")
+        raw = await redis_manager.redis.get(KEY_COMPOSITE.format(clean))
         if not raw:
-            raise HTTPException(status_code=404, detail=f"No composite intelligence for {clean}. Worker may be starting up.")
+            raise HTTPException(status_code=503, detail={"error": "data_unavailable", "source": "derivatives_publisher",
+                                                         "message": f"No fresh composite intelligence for {clean}."})
 
         data = json.loads(raw)
+        _reject_if_stale(data, MAX_AGE_DERIVATIVES, "derivatives_publisher")
         data["data_freshness"] = _check_freshness(data)
         data["engine"] = "Composite Intelligence v1.0 (Climate + Ignition + Heatmap + XFlow)"
         
@@ -698,13 +755,9 @@ async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depen
         direction = data.get("direction", "")
         score = data.get("composite_score", 0)
         
-        # action
-        if verdict == "FULL_CONVICTION":
+        # action (an entry needs both conviction and a direction)
+        if verdict in ("FULL_CONVICTION", "PARTIAL_CONVICTION") and direction in ("LONG", "SHORT"):
             data["action"] = "ENTER_LONG" if direction == "LONG" else "ENTER_SHORT"
-        elif verdict == "PARTIAL_CONVICTION":
-            data["action"] = "ENTER_LONG" if direction == "LONG" else "ENTER_SHORT"
-        elif verdict == "STAY_OUT":
-            data["action"] = "WAIT"
         else:
             data["action"] = "WAIT"
         
@@ -789,23 +842,34 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
 
         # Read summaries
         for key_name, field_name in [
-            ("horus:liq_heatmap:summary", "heatmap_summary"),
-            ("horus:xflow:summary", "xflow_summary"),
-            ("horus:composite:summary", "composite_summary"),
+            (KEY_HEATMAP.format("summary"), "heatmap_summary"),
+            (KEY_XFLOW.format("summary"), "xflow_summary"),
+            (KEY_COMPOSITE.format("summary"), "composite_summary"),
         ]:
             raw = await redis_manager.redis.get(key_name)
             if raw:
                 result[field_name] = json.loads(raw)
 
         # Read climate
+        result["stale_excluded"] = []
         raw_climate = await redis_manager.redis.get("hta:state:wiseman_climate")
         if raw_climate:
-            result["climate"] = json.loads(raw_climate)
+            climate_doc = json.loads(raw_climate)
+            age = _age_seconds(climate_doc)
+            if age is not None and age <= MAX_AGE_CLIMATE:
+                result["climate"] = climate_doc
+            else:
+                result["stale_excluded"].append("climate")
 
         # Read ignition
         raw_ignition = await redis_manager.redis.get("horus:global_ignition_state")
         if raw_ignition:
-            result["ignition"] = json.loads(raw_ignition)
+            ign_doc = json.loads(raw_ignition)
+            age = _age_seconds(ign_doc)
+            if age is not None and age <= MAX_AGE_IGNITION:
+                result["ignition"] = ign_doc
+            else:
+                result["stale_excluded"].append("ignition")
 
         # Read Cortex state (Maestro)
         raw_cortex = await redis_manager.redis.get("horus:maestro:state")
@@ -822,15 +886,20 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
         # Per-symbol detail
         for sym in sorted(VALID_SYMBOLS):
             sym_data = {}
-            for prefix, label in [
-                ("horus:liq_heatmap:", "heatmap"),
-                ("horus:xflow:", "xflow"),
-                ("horus:composite:", "composite"),
+            for key_tpl, label in [
+                (KEY_HEATMAP, "heatmap"),
+                (KEY_XFLOW, "xflow"),
+                (KEY_COMPOSITE, "composite"),
             ]:
-                raw = await redis_manager.redis.get(f"{prefix}{sym}")
+                raw = await redis_manager.redis.get(key_tpl.format(sym))
                 if raw:
                     parsed = json.loads(raw)
-                    parsed["data_freshness"] = _check_freshness(parsed)
+                    age = _age_seconds(parsed)
+                    if age is None or age > MAX_AGE_DERIVATIVES:
+                        result["stale_excluded"].append(f"{sym}.{label}")
+                        continue
+                    parsed["data_freshness"] = "FRESH"
+                    parsed["freshness_ms"] = int(age * 1000)
                     sym_data[label] = parsed
 
             if sym_data:
@@ -843,9 +912,7 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
                     direction = comp.get("direction", "")
                     score = comp.get("composite_score", 0)
                     
-                    if verdict == "FULL_CONVICTION":
-                        sym_action = "ENTER_LONG" if direction == "LONG" else "ENTER_SHORT"
-                    elif verdict == "PARTIAL_CONVICTION":
+                    if verdict in ("FULL_CONVICTION", "PARTIAL_CONVICTION") and direction in ("LONG", "SHORT"):
                         sym_action = "ENTER_LONG" if direction == "LONG" else "ENTER_SHORT"
                     else:
                         sym_action = "WAIT"
@@ -906,9 +973,11 @@ async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
     try:
         raw_state = await redis_manager.redis.get("horus:maestro:state")
         if not raw_state:
-            raise HTTPException(status_code=404, detail="Horus Cortex engine warming up. Please retry shortly.")
+            raise HTTPException(status_code=503, detail={"error": "data_unavailable", "source": "cortex",
+                                                         "message": "Horus Cortex engine warming up. Please retry shortly."})
 
         state = json.loads(raw_state)
+        cortex_age = _reject_if_stale(state, MAX_AGE_CORTEX, "cortex")
         
         narrative = state.get("narrative") or {}
         evidence = state.get("evidence_ledger") or []
@@ -958,6 +1027,15 @@ async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
         if isinstance(narrative, dict) and "headline" in narrative:
             narrative["headline"] = narrative["headline"].replace("تقرير المايسترو", "تقرير عقل حورس")
 
+        # English fields for global clients (the engine writes Arabic headlines)
+        regime = str(state.get("state", "TRANSITION"))
+        trust = float(state.get("trust_score", 50.0))
+        if isinstance(narrative, dict):
+            narrative["headline_en"] = f"Horus Cortex: {regime.replace('_', ' ').title()} regime, trust {trust:.0f}/100"
+        for c in contradictions if isinstance(contradictions, list) else []:
+            if isinstance(c, dict) and c.get("contradiction_id") and "description_en" not in c:
+                c["description_en"] = c["contradiction_id"].replace("_vs_", " vs ").replace("_", " ").title()
+
         return {
             "status": "success",
             "timestamp": time.time(),
@@ -996,7 +1074,8 @@ async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
             "narrative": narrative,
             "evidence_ledger": evidence,
             "cycle_memory": state.get("cycle_memory", {}),
-            "data_freshness": freshness_status
+            "data_freshness": freshness_status,
+            "freshness_ms": int(cortex_age * 1000),
         }
     except HTTPException:
         raise

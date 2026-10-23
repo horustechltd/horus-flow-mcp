@@ -257,7 +257,7 @@ paths:
       summary: Equity Flow (US Stocks)
       tags: [Equity Flow]
       operationId: getEquityFlow
-      description: Get real-time limit order imbalances and momentum delta for US Equities via Alpaca SIP.
+      description: Get real-time limit order imbalances and momentum delta for US Equities via the Alpaca IEX feed (a sample of roughly 3% of US consolidated volume).
       parameters:
         - in: path
           name: symbol

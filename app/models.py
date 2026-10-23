@@ -97,10 +97,16 @@ class FlowMetrics(BaseModel):
     delta_5s: float = 0.0
     delta_30s: float = 0.0
     imbalance_stability: float = 1.0
-    # Whale & Spike Intelligence
+    delta_5m: float = 0.0
+    price: float = 0.0
+    # Large-trade activity (threshold is relative to the symbol's 24h volume)
     whale_activity: bool = False
     large_sell_count: int = 0
+    large_trade_threshold_usd: float = 50000.0
+    large_sell_window_s: int = 300
     sell_spike: bool = False
+    # Equities only: SPY buy ratio from the IEX sample
+    spy_buy_ratio_iex: Optional[float] = None
     # Momentum Physics
     delta_accel: float = 0.0
     # Orderbook Microstructure
@@ -146,5 +152,6 @@ class FlowResponse(BaseModel):
     
     # 🐋 HTA Whale Intent (from trading soldiers via Redis)
     whale_intent: Optional[dict] = None
+    data_source: Optional[dict] = None
     
     timestamp: float                      # KEPT for backward compat

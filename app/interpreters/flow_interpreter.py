@@ -428,12 +428,13 @@ def interpret_flow(symbol: str, imb: Dict[str, Any], flow: Dict[str, Any], state
     # Append the main verdict text
     desc = locals().get("desc", "") + f"VERDICT: {forecast} | ⏱️ 30-SEC PROJECTION: {proj_2m}\n"
     
+    _large_thr = flow.get("large_trade_threshold_usd", 50000)
     if signal == "WHALE_DUMP":
-        desc += f"Whale dump detected: {large_sell_count} large sells during aggressive spike. Expect downward pressure."
+        desc += f"Large-sell burst: {large_sell_count} sells above ${_large_thr:,.0f} in the last 5m during an aggressive sell spike."
     elif signal == "INSTITUTIONAL_DISTRIBUTION":
-        desc += f"⚠️ INSTITUTIONAL DISTRIBUTION: Whales are selling into a massive {bid_ask_ratio:.1f}x Bid Wall. Hidden selling pressure detected!"
+        desc += f"Distribution: large sells into a {bid_ask_ratio:.1f}x bid-side depth imbalance (top 20 levels)."
     elif signal == "WHALE_EXIT":
-        desc += f"Institutional exit: {large_sell_count} large sell orders (>$50K each) in last 60s."
+        desc += f"Large sells: {large_sell_count} sells above ${_large_thr:,.0f} each in the last 5m."
     elif signal == "SELL_SPIKE":
         desc += "Sudden sell volume spike. Short-term bearish pressure."
     elif signal == "DEPTH_COLLAPSE":
@@ -667,6 +668,8 @@ def _build_response(signal, confidence, state_desc, risk, desc, flags,
             # Whale & Spike Intelligence
             "whale_activity": large_sell_count >= 2,
             "large_sell_count": large_sell_count,
+            "large_trade_threshold_usd": flow.get("large_trade_threshold_usd", 50000),
+            "large_sell_window_s": flow.get("large_sell_window_s", 300),
             "sell_spike": sell_spike,
             # Momentum Physics
             "delta_accel": round(delta_accel, 2),

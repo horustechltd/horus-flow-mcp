@@ -11,9 +11,9 @@ logger = logging.getLogger("API.Redis")
 # Cache TTL for flow responses (seconds)
 FLOW_CACHE_TTL = 2
 # Max history entries per symbol
-HISTORY_MAX_ENTRIES = 120  # ~30 min at 1 snapshot per 15s
+HISTORY_MAX_ENTRIES = 5760  # 24h at 1 snapshot per 15s
 # History entry TTL (seconds)
-HISTORY_TTL = 3600  # 1 hour
+HISTORY_TTL = 86400  # 24 hours
 
 
 class RedisManager:

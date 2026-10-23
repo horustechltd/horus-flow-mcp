@@ -9,9 +9,8 @@ module.exports = {
     max_memory_restart: '1G',
     env: {
       "NODE_ENV": "production",
-      "PORT": "8011",
-      "FLOW_API_KEY_1": "horus-demo-key-2026",
-      "FLOW_API_KEY_2": "horus-trader-key-2026"
+      "PORT": "8011"
+      // API keys live only in /root/horus_flow_api/.env (FLOW_API_KEY_<n> / FLOW_API_TIER_<n>)
     }
   },
   {

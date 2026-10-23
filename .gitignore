@@ -78,3 +78,7 @@ live_api_results.md
 HORUS_TECHNICAL_EVALUATION.md
 replit_dashboard/
 public_mcp_additions/
+
+# Registry signing material
+*.pem
+mcp-registry-auth

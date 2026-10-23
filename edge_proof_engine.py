@@ -34,7 +34,7 @@ from edge_proof_db import edge_proof_db
 # ══════════════════════════════════════════════
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-API_KEY = os.getenv("FLOW_API_KEY", "horus-demo-key-2026")
+API_KEY = os.getenv("FLOW_API_KEY", "")  # internal service key, set in .env
 BASE_URL = os.getenv("FLOW_API_URL", "http://127.0.0.1:8011")
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 

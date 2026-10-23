@@ -165,10 +165,10 @@ graph TD
 |:---|:---|:---|:---|
 | `/v1/intelligence/climate` | `GET` | WiseMan BTC regime and health | Builder |
 | `/v1/intelligence/ignitions` | `GET` | Volatility breakout scanner across ~750 assets, refreshed every minute | Builder |
-| `/v1/intelligence/liquidation-heatmap` | `GET` | Crowd positioning vs its 24h median and estimated liquidation levels (BTC, ETH, SOL) | Pro |
-| `/v1/intelligence/cross-exchange-flow` | `GET` | Futures/spot volume ratio vs its 7-day median, premium, funding, OI velocity | Pro |
+| `/v1/intelligence/liquidation-heatmap` | `GET` | Crowd positioning vs its 24h median and estimated liquidation levels (10 majors) | Pro |
+| `/v1/intelligence/cross-exchange-flow` | `GET` | Futures/spot volume vs its 7-day median, premium, funding and OI across Binance, Bybit and OKX | Pro |
 | `/v1/intelligence/composite` | `GET` | 0-100 score from climate, ignition, positioning and futures/spot flow | Pro |
-| `/v1/intelligence/market-intelligence` | `GET` | All of the above for BTC, ETH and SOL in one call | Pro |
+| `/v1/intelligence/market-intelligence` | `GET` | All of the above for 10 majors in one call | Pro |
 
 Every Level 3 document carries a `method` field with its exact formula. Endpoints return `503 data_stale` instead of serving data older than their freshness limit.
 
@@ -180,36 +180,77 @@ Every Level 3 document carries a `method` field with its exact formula. Endpoint
 
 ---
 
-## 🤖 Model Context Protocol (MCP) Setup
+### Agent Layer
+| Endpoint | Method | Description | Plan |
+|:---|:---|:---|:---|
+| `/v1/track-record` | `GET` | Live hit rate of every signal at 1/5/15/30 min, by signal, symbol and confidence | Public |
+| `/v1/track-record/signals` | `GET` | Point-in-time ledger: what Horus said, at what price, and what happened next (since Aug 2026) | Builder |
+| `/v1/events` | `GET` | Changes since your last check: liquidation cascades, regime changes, new US halts, and more | Builder |
+| `/v1/events/stream` | `GET` | The same events as Server-Sent Events | Builder |
+| `/v1/webhooks` | `POST` `GET` `DELETE` | Signed webhooks for any event type | Pro |
+| `/v1/equity/session` | `GET` | US session phase, holidays, early closes, next open/close, active halts | Public |
+| `/v1/equity/halts` | `GET` | All US trading halts published today, with plain-language reasons | Public |
+| `/v1/cross-asset` | `GET` | BTC order flow next to SPY, QQQ, COIN, MSTR and IBIT flow | Builder |
+| `/v1/status` | `GET` | Freshness and uptime of every data source | Public |
 
-Horus provides an official FastMCP server compatible with **Claude Desktop**, **Cursor IDE**, and any MCP client:
+Every directional flow reading carries a `reliability` block with its measured hit rate. Add `?view=compact` to `/v1/flow/crypto/{symbol}` for a token-light answer.
 
-### 1. Claude Desktop Configuration
-Add this to your `claude_desktop_config.json`:
+---
 
+## 🤖 Connect Your AI Agent
+
+### Remote MCP server (recommended)
+`https://flow.horustek.pro/mcp` (Streamable HTTP). Send your key as `X-API-Key: <key>` or `Authorization: Bearer <key>`.
+Without a key you are on the free tier: BTCUSDT and ETHUSDT flow, the public track record, US session context and service status.
+
+Claude Code:
+```bash
+claude mcp add --transport http horus-flow https://flow.horustek.pro/mcp --header "X-API-Key: YOUR_HORUS_KEY"
+```
+
+Any MCP client that supports remote servers:
 ```json
 {
   "mcpServers": {
-    "horus-cortex": {
-      "command": "python3",
-      "args": ["/absolute/path/to/horus_flow_api/horus_mcp.py", "--transport", "stdio"],
-      "env": {
-        "FLOW_MCP_KEY": "YOUR_HORUS_API_KEY"
-      }
+    "horus-flow": {
+      "type": "http",
+      "url": "https://flow.horustek.pro/mcp",
+      "headers": { "X-API-Key": "YOUR_HORUS_KEY" }
     }
   }
 }
 ```
 
-### 2. Available Sovereign Tools for AI Agents
-1. `get_horus_cortex()`: 🧠 **Primary Cognitive Tool** — Full consensus, trust score (0-100), boundaries ($), and bot action multipliers.
-2. `get_crypto_flow(symbol)`: Sub-second L2 orderflow and aggressive trade delta.
-3. `get_equity_flow(symbol)`: US Equity block trades and tape prints.
-4. `scan_crypto_flow(symbols)`: Batch scanner for active whale positioning.
-5. `get_liquidation_heatmap(symbol)`: Liquidation cascade zones and gravitational pull.
-6. `get_cross_exchange_flow(symbol)`: Spot vs Futures volume ratio and funding rate risk.
-7. `get_composite_intelligence(symbol)`: 4-layer composite verdict (0-100).
-8. `get_full_market_intelligence()`: Macro overview of all monitored instruments.
+### Tools (all read-only, compact JSON with an output schema)
+| Tool | What it answers | Plan |
+|:---|:---|:---|
+| `get_crypto_flow` | Live order flow for one pair, with the signal's measured hit rate | Free (BTC, ETH) / Builder |
+| `get_flow_history` | Is pressure building or fading over the last hour | Builder |
+| `get_market_overview` | Climate, Cortex and 10 majors in one call | Pro |
+| `get_derivatives` | Funding, OI across Binance/Bybit/OKX, crowd positioning, liquidation levels | Pro |
+| `get_cortex` | Regime, trust score, contradictions, invalidation and breakout levels | Pro |
+| `get_ignitions` | Breakout scanner across ~750 assets | Builder |
+| `get_track_record` | How often each signal was right | Free |
+| `get_signal_ledger` | Historical signals with outcomes, for backtesting | Builder |
+| `get_recent_events` | What changed since your last check | Builder |
+| `get_us_market_session` | Can US stocks be traded right now, and which are halted | Free |
+| `get_cross_asset` | Are crypto and US equities risk-on together or diverging | Builder |
+| `get_equity_flow` | US stock flow from the IEX sample | Builder |
+| `get_service_status` | Freshness of every data source | Free |
+
+Readings are context with a measured track record, not trade instructions. Many signals score close to a coin flip; the `reliability` field says so.
+
+### Local stdio server (PyPI)
+`pip install horus-flow-mcp` and set `RAPIDAPI_KEY` to use the RapidAPI listing from a local MCP client.
+
+### Webhook signatures
+```python
+import hmac, hashlib
+def verify(secret: str, timestamp: str, body: bytes, signature: str) -> bool:
+    expected = "sha256=" + hmac.new(secret.encode(), timestamp.encode() + b"." + body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+# timestamp = request.headers["X-Horus-Timestamp"], signature = request.headers["X-Horus-Signature"]
+```
 
 ---
 
@@ -242,18 +283,21 @@ else:
 
 ---
 
-## 💎 Institutional Subscription Tiers
+## 💎 Plans
 
-| Feature | Explorer (Free) | Trader ($49/mo) | Professional ($149/mo) | Institutional ($499/mo) |
+| Feature | Free | Builder / Trader ($49/mo) | Pro ($149/mo) | Institutional ($499/mo) |
 |:---|:---:|:---:|:---:|:---:|
-| **Daily API Quota** | 100 calls/day | 1,000 calls/day | 5,000 calls/day | Unlimited |
-| **Microstructure L2 Flow** | Top 3 Symbols | All Crypto Symbols | All Crypto + US Equity | All Instruments |
-| **Whale Tape & Imbalances** | Basic | Real-Time | Real-Time Sub-ms | Priority Dedicated Socket |
-| **Level 3 Intelligence** | ❌ | ❌ | ✅ Full Access | ✅ Full Access |
-| **🧠 Level 4 Horus Cortex** | ❌ | ❌ | ✅ **Full Cognitive Brain** | ✅ **Full Cognitive Brain** |
-| **Autonomous Bot Multipliers** | ❌ | ❌ | ✅ | ✅ |
-| **AI Agent MCP Server** | Community | Community | ✅ Full FastMCP Access | ✅ Dedicated Private Server |
-| **SLA & Support** | Community | Standard | Priority | 24/7 Dedicated Quant Desk |
+| Crypto order flow | BTCUSDT, ETHUSDT | Any Binance spot pair | Any Binance spot pair | Any Binance spot pair |
+| Flow history | – | 60 minutes | 24 hours | 24 hours |
+| Track record and US session context | ✅ | ✅ | ✅ | ✅ |
+| Climate, ignitions, cross-asset, US equities (IEX sample) | – | ✅ | ✅ | ✅ |
+| Events (polling and SSE), signal ledger | – | ✅ | ✅ | ✅ |
+| Derivatives (10 majors, Binance + Bybit + OKX), composite, Cortex | – | – | ✅ | ✅ |
+| Signed webhooks | – | – | ✅ | ✅ |
+| Rate limit | 30/min | 120/min | 300/min | 600/min |
+| Remote MCP server | ✅ | ✅ | ✅ | ✅ |
+
+Live status and uptime: [flow.horustek.pro/status.html](https://flow.horustek.pro/status.html)
 
 ---
 

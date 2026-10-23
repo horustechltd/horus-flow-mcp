@@ -64,12 +64,12 @@ HEADERS = {
 mcp = FastMCP(
     "Horus Flow Intelligence",
     instructions=(
-        "Horus Flow provides real-time institutional orderflow intelligence for crypto and US equities. "
-        "Use it to detect whale exits, spoofing, bid wall traps, liquidation zones, smart money divergence, "
-        "and institutional block trades. Signals include BUY_PRESSURE, SELL_PRESSURE, WHALE_EXIT, "
-        "EMERGENCY_DUMP, and INSTITUTIONAL_DISTRIBUTION with confidence scores. "
-        "Always check orderflow before making any trade decision — it reveals what institutions "
-        "are doing RIGHT NOW, unlike lagging indicators like RSI or MACD."
+        "Horus Flow provides live order flow for Binance spot pairs, derivatives positioning for 10 majors "
+        "across Binance, Bybit and OKX, the Horus Cortex regime, and US equity flow from the IEX sample. "
+        "Signals such as BUY_PRESSURE, SELL_PRESSURE, WHALE_EXIT and EMERGENCY_DUMP are context: their live "
+        "hit rates are published at https://flow.horustek.pro/v1/track-record and many are close to 50%. "
+        "Do not treat a signal as a trade instruction. For the full agent toolset with per-signal reliability, "
+        "use the remote MCP server at https://flow.horustek.pro/mcp."
     ),
 )
 
@@ -368,7 +368,7 @@ async def get_api_info() -> str:
     """Information about the Horus Flow Intelligence system."""
     return json.dumps({
         "name": "Horus Flow & Cortex Intelligence",
-        "version": "3.0.0",
+        "version": "3.1.0",
         "provider": "HORUS TECH LTD",
         "mcp_name": "pro.horustek/horus-flow-mcp",
         "description": "Cognitive Market Brain and orderflow physics for Autonomous AI Agents",

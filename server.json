@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "pro.horustek/horus-flow-mcp",
-  "description": "Cognitive Market Brain for Autonomous AI Trading Agents (Orderflow & Contradiction Engine)",
+  "description": "Crypto order flow, cross-venue derivatives and US session context for AI agents, with a live track record.",
   "repository": {
     "url": "https://github.com/horustechltd/horus-flow-mcp",
     "source": "github"
   },
-  "version": "3.0.0",
+  "version": "3.1.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "horus-flow-mcp",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "transport": {
         "type": "stdio"
       },
@@ -22,6 +22,20 @@
           "format": "string",
           "isSecret": true,
           "name": "RAPIDAPI_KEY"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://flow.horustek.pro/mcp",
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "description": "Your Horus Flow API key. Optional: without it the free tier applies.",
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }

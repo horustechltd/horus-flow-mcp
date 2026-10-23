@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "horus-flow-mcp"
-version = "3.0.0"
+version = "3.1.0"
 description = "Cognitive Market Brain for Autonomous AI Trading Agents (Orderflow Physics, Liquidation Gravity & Contradiction Engine)"
 readme = "README.md"
 authors = [

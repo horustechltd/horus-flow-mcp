@@ -1,0 +1,29 @@
+# Horus Flow
+
+> Live crypto market microstructure and US equity session context for AI agents, served as a remote MCP server and a REST API. Every directional reading carries its own measured hit rate.
+
+## Connect
+- Remote MCP (Streamable HTTP): https://flow.horustek.pro/mcp
+- Auth: header `X-API-Key: <key>` or `Authorization: Bearer <key>`. Without a key: free tier.
+- REST base: https://flow.horustek.pro  (OpenAPI: https://flow.horustek.pro/api/openapi.json)
+- Status: https://flow.horustek.pro/v1/status
+
+## What it provides
+- Order flow for any Binance spot pair: 5s and 30s aggressive buy/sell delta in USD, top-20 order book depth ratio, large trades relative to the pair's 24h volume.
+- Derivatives for 10 majors (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, SUI): funding and open interest across Binance, Bybit and OKX; futures/spot volume vs its 7-day median; crowd long/short vs its 24h median; estimated liquidation levels; liquidations seen in the last 5 minutes.
+- Horus Cortex: BTC regime, trust score, contradictions between evidence families.
+- Ignition scanner: breakout conditions across ~750 assets, refreshed every minute.
+- US equities: session phase, holidays, early closes, next open/close, active trading halts (Nasdaq Trader); flow from the IEX feed, which is a sample of about 3% of US volume.
+- Cross-asset: BTC flow next to SPY, QQQ, COIN, MSTR and IBIT.
+- Events: liquidation cascades, regime changes, composite changes, new halts; by polling, Server-Sent Events or signed webhooks.
+
+## How to weigh the signals
+- `reliability.hit_rate` is measured live since August 2026 at 1, 5, 15 and 30 minutes. Many signals are close to 50% (a coin flip). Use them as context, not as trade instructions.
+- Every response reports its data age (`freshness_ms`). Endpoints return HTTP 503 `data_stale` rather than old data.
+- Full numbers: https://flow.horustek.pro/v1/track-record ; per-signal ledger for backtests: /v1/track-record/signals
+
+## Free tier
+BTCUSDT and ETHUSDT flow, track record, US session and halts, service status.
+
+## Not financial advice
+Horus Flow provides market data and measured statistics. It does not manage money or give personalized advice.

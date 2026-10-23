@@ -765,3 +765,12 @@ def test_route_template_fallback():
     assert m._route_template("/v1/flow/crypto/BTCUSDT") == "/v1/flow/crypto/{symbol}"
     assert m._route_template("/v1/flow/crypto/BTCUSDT/history") == "/v1/flow/crypto/{symbol}/history"
     assert m._route_template("/v1/intelligence/cortex") == "/v1/intelligence/cortex"
+
+
+def test_rapidapi_public_endpoints_are_counted(fresh_state):
+    h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "carol", "X-RapidAPI-Subscription": "PRO"}
+    assert client.get("/v1/status", headers=h).status_code == 200
+    assert client.get("/v1/status").status_code == 200                      # not RapidAPI: not counted
+    assert client.get("/v1/status", headers={**h, "X-RapidAPI-Proxy-Secret": "wrong"}).status_code == 200  # forged: not counted
+    s = asyncio.run(rapidapi_stats.summary(fresh_state, 1))[0]
+    assert s["requests_by_plan"] == {"PRO": 1} and s["top_endpoints"] == {"/v1/status": 1}

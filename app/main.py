@@ -29,7 +29,7 @@ from app.redis_client import redis_manager
 from app.database import log_usage
 from app.wiseman_publisher import wiseman_publisher_loop
 from app.ignition_publisher import ignition_publisher_loop
-from app.config import TEST_INSTANCE
+from app.config import TEST_INSTANCE, RAPIDAPI_PROXY_SECRET
 from app.derivatives_publisher import derivatives_publisher_loop, KEY_COMPOSITE
 from app.history_recorder import history_recorder_loop
 from app.status_monitor import status_monitor_loop, public_status
@@ -127,6 +127,10 @@ async def add_process_time_header(request: Request, call_next):
 
     # RapidAPI usage counters (plan, unique subscribers, endpoint, status)
     rapid = getattr(request.state, "rapidapi", None)
+    if not rapid and RAPIDAPI_PROXY_SECRET and request.headers.get("x-rapidapi-proxy-secret") == RAPIDAPI_PROXY_SECRET:
+        # public endpoints (status, track record, US session) skip key checks; count them too
+        rapid = {"plan": (request.headers.get("x-rapidapi-subscription") or "NONE").upper(),
+                 "user": request.headers.get("x-rapidapi-user", "rapidapi-subscriber")}
     if rapid:
         try:
             route = getattr(request.scope.get("route"), "path", None) or _route_template(request.url.path)

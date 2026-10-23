@@ -1,0 +1,2905 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Horus Flow Intelligence",
+    "version": "3.1.0",
+    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nPlans: BASIC (free) BTCUSDT and ETHUSDT flow, track record, US session. PRO adds every pair, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
+    "contact": {
+      "name": "Horus Tech Ltd",
+      "email": "admin@horustek.pro",
+      "url": "https://flow.horustek.pro"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://flow.horustek.pro"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Crypto Order Flow",
+      "description": "Live order book and trade flow for Binance spot pairs"
+    },
+    {
+      "name": "Derivatives",
+      "description": "Futures, funding, open interest and positioning for 10 majors"
+    },
+    {
+      "name": "Market Regime",
+      "description": "Cortex, climate and the breakout scanner"
+    },
+    {
+      "name": "Agent Layer",
+      "description": "Track record, events and webhooks"
+    },
+    {
+      "name": "US Equities",
+      "description": "US session context, halts and IEX-sample flow"
+    },
+    {
+      "name": "System",
+      "description": "Service status"
+    }
+  ],
+  "paths": {
+    "/v1/flow/crypto/{symbol}": {
+      "get": {
+        "tags": [
+          "Crypto Order Flow"
+        ],
+        "summary": "Live order flow for a pair",
+        "description": "Order book imbalance (top 20 levels) and aggressive trade flow for any TRADING Binance spot pair: 5s and 30s buy/sell delta in USD, depth ratio, large sells in the last 5 minutes (threshold scaled to the pair's 24h volume). Every directional reading carries `reliability`: its measured hit rate at 1/5/15/30 minutes from the live track record. Add `view=compact` for a short answer sized for AI agents. A pair requested for the first time returns 202; retry after 5 seconds.\n\nPlans: BASIC (free) covers BTCUSDT and ETHUSDT; PRO and above cover every Binance spot pair.",
+        "operationId": "get_crypto_flow",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "signal": "DEPTH_COLLAPSE",
+                  "action": "BLOCK_LONG",
+                  "direction_bias": "BEARISH",
+                  "confidence": 0.88,
+                  "risk": "EXTREME",
+                  "market_regime": "CHOP",
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 0,
+                  "timestamp_utc": "2026-10-23T18:19:03.196465+00:00",
+                  "explanation": "Bid-side liquidity collapsed -56%. Liquidity vacuum forming below.",
+                  "market_state": "LIQUIDITY_VACUUM",
+                  "description": "VERDICT: DOWN 🩸 | ⏱️ 30-SEC PROJECTION: LIQUIDITY ABSORPTION ➖ (Toxicity: 27% | Gamma: 0.1x)\nBid-side liquidity collapsed -56%. Liquidity vacuum forming below.",
+                  "metrics": {
+                    "bid_ask_ratio": 0.038,
+                    "buy_sell_ratio": 0.408,
+                    "delta_5s": 771.649,
+                    "delta_30s": -13295.439,
+                    "imbalance_stability": 0.106,
+                    "delta_5m": 402596.738,
+                    "price": 81656.01,
+                    "whale_activity": false,
+                    "large_sell_count": 0,
+                    "large_trade_threshold_usd": 47934.0,
+                    "large_sell_window_s": 300,
+                    "sell_spike": false,
+                    "spy_buy_ratio_iex": null,
+                    "delta_accel": 0.06,
+                    "wall_side": "BID",
+                    "top5_imbalance": 0.0295,
+                    "spread_pct": 0.0,
+                    "refill_ratio": 1.02,
+                    "bid_depth_change_pct": -56.4,
+                    "ask_depth_change_pct": -0.0,
+                    "wiseman_climate": {
+                      "market_mode": "CHOP",
+                      "health": "HEALTHY",
+                      "confidence": 0.55,
+                      "reason": "EMA50 slope: +0.51% | RSI: 46 | ATR ratio: 0.85 | Vol ratio: 0.02 | Dir changes: 7/8",
+                      "timestamp": "2026-10-23T18:15:31.261555+00:00",
+                      "timestamp_epoch": 1792779331.2615669,
+                      "target": "GLOBAL_BTC_MACRO"
+                    },
+                    "flags": [
+                      "BID_DEPTH_COLLAPSE(-56%)",
+                      "WISEMAN_APPROVED(SAFE)"
+                    ]
+                  },
+                  "whale_intent": {
+                    "direction": "SHORT",
+                    "buy_ratio": 0.408,
+                    "delta_30s": -13295.44,
+                    "persistence": 21,
+                    "exec_intensity": 28.7,
+                    "age_seconds": 0.1
+                  },
+                  "data_source": null,
+                  "reliability": {
+                    "directional": true,
+                    "basis": "DEPTH_COLLAPSE on BTCUSDT, last 30 days",
+                    "samples": 372,
+                    "hit_rate": {
+                      "1m": 0.5753,
+                      "5m": 0.5027,
+                      "15m": 0.5161,
+                      "30m": 0.4892
+                    },
+                    "avg_directional_move_bps": {
+                      "1m": 0.48,
+                      "5m": 0.06,
+                      "15m": -1.29,
+                      "30m": -1.61
+                    },
+                    "coin_flip": 0.5,
+                    "confidence_bucket_hit_rate_5m": 0.4999,
+                    "interpretation": "Historically 50% at 5 minutes (n=372): close to a coin flip. Use as context, not as a trade trigger.",
+                    "track_record_url": "/v1/track-record"
+                  },
+                  "timestamp": 1792779543.1964633
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "description": "Binance spot pair, e.g. BTCUSDT",
+            "schema": {
+              "type": "string"
+            },
+            "example": "BTCUSDT"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "full (default) or compact",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full",
+                "compact"
+              ],
+              "default": "full"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/flow/crypto/{symbol}/history": {
+      "get": {
+        "tags": [
+          "Crypto Order Flow"
+        ],
+        "summary": "Order flow history",
+        "description": "Snapshots recorded every 15 seconds with signal, price, deltas, ratios and depth metrics. Use it to see whether pressure is building or fading.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_flow_history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "minutes": 5,
+                  "snapshots": 19,
+                  "history": [
+                    {
+                      "signal": "INSTITUTIONAL_DISTRIBUTION",
+                      "action": "BLOCK_LONG",
+                      "direction_bias": "BEARISH",
+                      "confidence": 0.88,
+                      "market_state": "DISTRIBUTION",
+                      "risk": "HIGH",
+                      "price": 81608.01,
+                      "delta_5s": 1634.608,
+                      "delta_30s": 81406.873,
+                      "delta_5m": 414754.305,
+                      "buy_sell_ratio": 0.597,
+                      "bid_ask_ratio": 2.482,
+                      "top5_imbalance": 0.7862,
+                      "spread_pct": 0.0,
+                      "large_sell_count": 3,
+                      "large_trade_threshold_usd": 47934.0,
+                      "bid_depth_change_pct": 3.0,
+                      "ask_depth_change_pct": -12.8,
+                      "delta_accel": 0.02,
+                      "_ts": 1792779256.0428846
+                    },
+                    {
+                      "signal": "WHALE_EXIT",
+                      "action": "REDUCE_EXPOSURE",
+                      "direction_bias": "BEARISH",
+                      "confidence": 0.85,
+                      "market_state": "DISTRIBUTION",
+                      "risk": "HIGH",
+                      "price": 81609.06,
+                      "delta_5s": -2899.57,
+                      "delta_30s": 151127.614,
+                      "delta_5m": 419546.307,
+                      "buy_sell_ratio": 0.907,
+                      "bid_ask_ratio": 1.51,
+                      "top5_imbalance": 0.7086,
+                      "spread_pct": 0.0,
+                      "large_sell_count": 3,
+                      "large_trade_threshold_usd": 47934.0,
+                      "bid_depth_change_pct": 0.8,
+                      "ask_depth_change_pct": 0.0,
+                      "delta_accel": 0.09,
+                      "_ts": 1792779271.1228843
+                    },
+                    {
+                      "signal": "WHALE_EXIT",
+                      "action": "REDUCE_EXPOSURE",
+                      "direction_bias": "BEARISH",
+                      "confidence": 0.85,
+                      "market_state": "DISTRIBUTION",
+                      "risk": "HIGH",
+                      "price": 81609.07,
+                      "delta_5s": -9466.651,
+                      "delta_30s": -3084.904,
+                      "delta_5m": 411727.343,
+                      "buy_sell_ratio": 0.452,
+                      "bid_ask_ratio": 1.797,
+                      "top5_imbalance": 0.7392,
+                      "spread_pct": 0.0,
+                      "large_sell_count": 3,
+                      "large_trade_threshold_usd": 47934.0,
+                      "bid_depth_change_pct": -0.0,
+                      "ask_depth_change_pct": -0.0,
+                      "delta_accel": 1.78,
+                      "_ts": 1792779286.159798
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "description": "Binance spot pair, e.g. BTCUSDT",
+            "schema": {
+              "type": "string"
+            },
+            "example": "BTCUSDT"
+          },
+          {
+            "name": "minutes",
+            "in": "query",
+            "required": false,
+            "description": "Lookback in minutes. PRO up to 60, ULTRA and MEGA up to 1440.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1440,
+              "default": 30
+            },
+            "example": 30
+          }
+        ]
+      }
+    },
+    "/v1/intelligence/cross-exchange-flow": {
+      "get": {
+        "tags": [
+          "Derivatives"
+        ],
+        "summary": "Futures vs spot, funding and open interest",
+        "description": "Futures/spot 24h volume vs its 7-day median, mark/index premium, funding, open interest and its 10/30-minute change, positioning signal, and open interest and funding across Binance, Bybit and OKX. Refreshed every 60 seconds.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "get_cross_exchange_flow",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "futures_volume_24h": 8025766899.74,
+                  "spot_volume_24h": 957003715.08,
+                  "futures_spot_volume_ratio": 8.386,
+                  "ratio_baseline_7d": 9.415,
+                  "ratio_vs_baseline": 0.891,
+                  "market_type": "BALANCED",
+                  "premium_discount_pct": -0.0366,
+                  "premium_bias": "NEUTRAL",
+                  "funding_rate": 9.284e-05,
+                  "oi_current": 7504722085.42,
+                  "oi_velocity_10m_pct": 0.139,
+                  "oi_change_30m_pct": 0.076,
+                  "price_change_10m_pct": 0.157,
+                  "positioning_signal": "STABLE",
+                  "risk_assessment": "MEDIUM — Spot and futures activity are within their normal 7-day range.",
+                  "cross_venue": {
+                    "venues": {
+                      "binance": {
+                        "oi_usd": 7504722085.42,
+                        "funding_rate": 9.284e-05
+                      },
+                      "bybit": {
+                        "oi_usd": 5097537259.57,
+                        "funding_rate": 0.0001
+                      },
+                      "okx": {
+                        "oi_usd": 2495907453.32,
+                        "funding_rate": 9.81019634977e-05
+                      }
+                    },
+                    "venues_reporting": 3,
+                    "total_oi_usd": 15098166798.31,
+                    "oi_weighted_funding_rate": 9.613e-05,
+                    "funding_spread": 7.16e-06,
+                    "binance_share_of_oi": 0.4971
+                  },
+                  "source": "Binance spot + USD-M futures public API; Bybit and OKX public APIs for cross-venue OI and funding",
+                  "method": "market_type compares the futures/spot 24h volume ratio with its median over the last 7 complete days (>=1.5x HYPER_SPECULATION, <=0.67x SPOT_DRIVEN). premium_bias uses mark vs index (+/-0.05%). positioning_signal uses 10-minute open-interest change (+1% with price +/-0.2%, or -2% for MASS_DELEVERAGING).",
+                  "timestamp": 1792779538.1359942,
+                  "data_freshness": "FRESH",
+                  "engine": "Cross-Exchange Flow v1.0",
+                  "direction_bias": "NEUTRAL",
+                  "risk": "MEDIUM",
+                  "action": "WAIT",
+                  "market_regime": "RANGING",
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 5118,
+                  "timestamp_utc": "2026-10-23T18:19:03.254616+00:00",
+                  "explanation": "Spot and futures activity are within their normal 7-day range."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "description": "One of BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, BNBUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, LINKUSDT, SUIUSDT",
+            "schema": {
+              "type": "string",
+              "default": "BTCUSDT",
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT",
+                "XRPUSDT",
+                "BNBUSDT",
+                "DOGEUSDT",
+                "ADAUSDT",
+                "AVAXUSDT",
+                "LINKUSDT",
+                "SUIUSDT"
+              ]
+            },
+            "example": "BTCUSDT"
+          }
+        ]
+      }
+    },
+    "/v1/intelligence/liquidation-heatmap": {
+      "get": {
+        "tags": [
+          "Derivatives"
+        ],
+        "summary": "Crowd positioning and liquidation levels",
+        "description": "Global and top-trader long/short ratios against their own 24h median, smart-money divergence, taker flow, estimated liquidation prices at 100x/50x/25x/10x, and liquidations observed in the last 5 minutes.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "get_liquidation_heatmap",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "current_price": 81620.4,
+                  "gravity_direction": "NEUTRAL",
+                  "gravity_score": 0.32,
+                  "crowd_bias": "BALANCED",
+                  "long_short_ratio_global": 2.0817,
+                  "long_short_ratio_top_traders": 1.6733,
+                  "long_short_ratio_global_median_24h": 2.1309,
+                  "long_short_ratio_top_traders_median_24h": 1.5241,
+                  "crowd_vs_median": 0.977,
+                  "smart_money_divergence": false,
+                  "taker_buy_sell_ratio": 1.4767,
+                  "oi_change_30m_pct": 0.076,
+                  "oi_current": 7504722085.42,
+                  "estimated_liquidation_zones": {
+                    "leverage": [
+                      100,
+                      50,
+                      25,
+                      10
+                    ],
+                    "long_zones": [
+                      80804.2,
+                      79988.0,
+                      78355.6,
+                      73458.4
+                    ],
+                    "short_zones": [
+                      82436.6,
+                      83252.9,
+                      84885.3,
+                      89782.5
+                    ],
+                    "nearest_liq_price": 80804.2
+                  },
+                  "observed_liquidations_5m": {
+                    "long_liquidated_usd": 0,
+                    "short_liquidated_usd": 0,
+                    "count": 0
+                  },
+                  "risk_assessment": "LOW — Positioning is not stretched.",
+                  "source": "Binance USD-M futures public API (5m ratios) + forceOrder stream",
+                  "method": "crowd_bias compares the global long/short account ratio with its own 24h median (>=1.15x LONG_HEAVY, >=1.35x OVERLEVERAGED_LONG, mirrored for shorts). gravity_score = 0.5*crowd tilt (|ln(ratio vs median)| / ln 1.5) + 0.3*taker imbalance (|buy/sell-1| / 0.5) + 0.2*30-min OI build-up (/3%), each capped at 1. gravity_direction points at the crowded side's liquidation levels (DOWN when the crowd is long) and is NEUTRAL below 0.3 or when the crowd is BALANCED. Liquidation zones are approximate liquidation prices for positions opened at the current price with 100x/50x/25x/10x leverage.",
+                  "timestamp": 1792779538.1359942,
+                  "data_freshness": "FRESH",
+                  "engine": "Liquidation Heatmap v1.0",
+                  "direction_bias": "NEUTRAL",
+                  "action": "WAIT",
+                  "risk": "MEDIUM",
+                  "market_regime": "RANGING",
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 5137,
+                  "timestamp_utc": "2026-10-23T18:19:03.273805+00:00",
+                  "explanation": "Positioning is not stretched."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "description": "One of BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, BNBUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, LINKUSDT, SUIUSDT",
+            "schema": {
+              "type": "string",
+              "default": "BTCUSDT",
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT",
+                "XRPUSDT",
+                "BNBUSDT",
+                "DOGEUSDT",
+                "ADAUSDT",
+                "AVAXUSDT",
+                "LINKUSDT",
+                "SUIUSDT"
+              ]
+            },
+            "example": "BTCUSDT"
+          }
+        ]
+      }
+    },
+    "/v1/intelligence/composite": {
+      "get": {
+        "tags": [
+          "Derivatives"
+        ],
+        "summary": "Composite score",
+        "description": "A 0-100 score from four components (climate, ignition, positioning, futures/spot flow), with verdict and direction. The `method` field documents the formula.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "get_composite",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "composite_score": 53.9,
+                  "verdict": "NEUTRAL",
+                  "direction": "NEUTRAL",
+                  "breakdown": {
+                    "climate_score": 8.8,
+                    "ignition_score": 9.4,
+                    "heatmap_score": 17.0,
+                    "xflow_score": 18.8
+                  },
+                  "details": {
+                    "climate": "CHOP/HEALTHY(conf=55%)",
+                    "ignition": "DORMANT(ign=0.37)",
+                    "heatmap": "grav=NEUTRAL(0.32),crowd=BALANCED,smd=False",
+                    "xflow": "BALANCED,STABLE,fund=+0.00009"
+                  },
+                  "one_liner": "FLAT BTCUSDT — No stretched positioning",
+                  "method": "Four components of 0-25 each. climate: WiseMan mode x health weight. ignition: global ignition x 25. heatmap: 25 x (1 - gravity_score), x0.7 on smart-money divergence, x0.6 when overleveraged. xflow: SPOT_DRIVEN 25, BALANCED 18.75, HYPER_SPECULATION 10, x0.4 on mass deleveraging, x0.6 on extreme funding. direction needs at least 2 net votes from gravity, premium, positioning and taker flow.",
+                  "timestamp": 1792779538.1359942,
+                  "data_freshness": "FRESH",
+                  "engine": "Composite Intelligence v1.0 (Climate + Ignition + Heatmap + XFlow)",
+                  "action": "WAIT",
+                  "direction_bias": "NEUTRAL",
+                  "risk": "HIGH",
+                  "market_regime": "CHOP",
+                  "confidence": 0.54,
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 5165,
+                  "timestamp_utc": "2026-10-23T18:19:03.301849+00:00",
+                  "explanation": "FLAT BTCUSDT — No stretched positioning"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "description": "One of BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, BNBUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, LINKUSDT, SUIUSDT",
+            "schema": {
+              "type": "string",
+              "default": "BTCUSDT",
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT",
+                "XRPUSDT",
+                "BNBUSDT",
+                "DOGEUSDT",
+                "ADAUSDT",
+                "AVAXUSDT",
+                "LINKUSDT",
+                "SUIUSDT"
+              ]
+            },
+            "example": "BTCUSDT"
+          }
+        ]
+      }
+    },
+    "/v1/intelligence/market-intelligence": {
+      "get": {
+        "tags": [
+          "Derivatives"
+        ],
+        "summary": "Market overview for 10 majors",
+        "description": "Climate, ignition regime, and for each of 10 majors the composite, positioning and futures/spot documents in one call. Stale parts are left out and listed in `stale_excluded`.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "get_market_intelligence",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "timestamp": 1792779543.307247,
+                  "timestamp_utc": "2026-10-23T18:19:03.307233+00:00",
+                  "engine": "Horus Level 3 Intelligence v1.0",
+                  "engine_version": "2.1.0",
+                  "symbols": {
+                    "BTCUSDT": {
+                      "heatmap": {
+                        "symbol": "BTCUSDT",
+                        "current_price": 81620.4,
+                        "gravity_direction": "NEUTRAL",
+                        "gravity_score": 0.32,
+                        "crowd_bias": "BALANCED",
+                        "long_short_ratio_global": 2.0817,
+                        "long_short_ratio_top_traders": 1.6733,
+                        "long_short_ratio_global_median_24h": 2.1309,
+                        "long_short_ratio_top_traders_median_24h": 1.5241,
+                        "crowd_vs_median": 0.977,
+                        "smart_money_divergence": false,
+                        "taker_buy_sell_ratio": 1.4767,
+                        "oi_change_30m_pct": 0.076,
+                        "oi_current": 7504722085.42,
+                        "estimated_liquidation_zones": {
+                          "leverage": [
+                            100,
+                            50,
+                            25,
+                            10
+                          ],
+                          "long_zones": [
+                            80804.2,
+                            79988.0,
+                            78355.6,
+                            73458.4
+                          ],
+                          "short_zones": [
+                            82436.6,
+                            83252.9,
+                            84885.3,
+                            89782.5
+                          ],
+                          "nearest_liq_price": 80804.2
+                        },
+                        "observed_liquidations_5m": {
+                          "long_liquidated_usd": 0,
+                          "short_liquidated_usd": 0,
+                          "count": 0
+                        },
+                        "risk_assessment": "LOW — Positioning is not stretched.",
+                        "source": "Binance USD-M futures public API (5m ratios) + forceOrder stream",
+                        "method": "crowd_bias compares the global long/short account ratio with its own 24h median (>=1.15x LONG_HEAVY, >=1.35x OVERLEVERAGED_LONG, mirrored for shorts). gravity_score = 0.5*crowd tilt (|ln(ratio vs median)| / ln 1.5) + 0.3*taker imbalance (|buy/sell-1| / 0.5) + 0.2*30-min OI build-up (/3%), each capped at 1. gravity_direction points at the crowded side's liquidation levels (DOWN when the crowd is long) and is NEUTRAL below 0.3 or when the crowd is BALANCED. Liquidation zones are approximate liquidation prices for positions opened at the current price with 100x/50x/25x/10x leverage.",
+                        "timestamp": 1792779538.1359942,
+                        "data_freshness": "FRESH",
+                        "freshness_ms": 5198
+                      },
+                      "xflow": {
+                        "symbol": "BTCUSDT",
+                        "futures_volume_24h": 8025766899.74,
+                        "spot_volume_24h": 957003715.08,
+                        "futures_spot_volume_ratio": 8.386,
+                        "ratio_baseline_7d": 9.415,
+                        "ratio_vs_baseline": 0.891,
+                        "market_type": "BALANCED",
+                        "premium_discount_pct": -0.0366,
+                        "premium_bias": "NEUTRAL",
+                        "funding_rate": 9.284e-05,
+                        "oi_current": 7504722085.42,
+                        "oi_velocity_10m_pct": 0.139,
+                        "oi_change_30m_pct": 0.076,
+                        "price_change_10m_pct": 0.157,
+                        "positioning_signal": "STABLE",
+                        "risk_assessment": "MEDIUM — Spot and futures activity are within their normal 7-day range.",
+                        "cross_venue": {
+                          "venues": {
+                            "binance": {
+                              "oi_usd": 7504722085.42,
+                              "funding_rate": 9.284e-05
+                            },
+                            "bybit": {
+                              "oi_usd": 5097537259.57,
+                              "funding_rate": 0.0001
+                            },
+                            "okx": {
+                              "oi_usd": 2495907453.32,
+                              "funding_rate": 9.81019634977e-05
+                            }
+                          },
+                          "venues_reporting": 3,
+                          "total_oi_usd": 15098166798.31,
+                          "oi_weighted_funding_rate": 9.613e-05,
+                          "funding_spread": 7.16e-06,
+                          "binance_share_of_oi": 0.4971
+                        },
+                        "source": "Binance spot + USD-M futures public API; Bybit and OKX public APIs for cross-venue OI and funding",
+                        "method": "market_type compares the futures/spot 24h volume ratio with its median over the last 7 complete days (>=1.5x HYPER_SPECULATION, <=0.67x SPOT_DRIVEN). premium_bias uses mark vs index (+/-0.05%). positioning_signal uses 10-minute open-interest change (+1% with price +/-0.2%, or -2% for MASS_DELEVERAGING).",
+                        "timestamp": 1792779538.1359942,
+                        "data_freshness": "FRESH",
+                        "freshness_ms": 5200
+                      },
+                      "composite": {
+                        "symbol": "BTCUSDT",
+                        "composite_score": 53.9,
+                        "verdict": "NEUTRAL",
+                        "direction": "NEUTRAL",
+                        "breakdown": {
+                          "climate_score": 8.8,
+                          "ignition_score": 9.4,
+                          "heatmap_score": 17.0,
+                          "xflow_score": 18.8
+                        },
+                        "details": {
+                          "climate": "CHOP/HEALTHY(conf=55%)",
+                          "ignition": "DORMANT(ign=0.37)",
+                          "heatmap": "grav=NEUTRAL(0.32),crowd=BALANCED,smd=False",
+                          "xflow": "BALANCED,STABLE,fund=+0.00009"
+                        },
+                        "one_liner": "FLAT BTCUSDT — No stretched positioning",
+                        "method": "Four components of 0-25 each. climate: WiseMan mode x health weight. ignition: global ignition x 25. heatmap: 25 x (1 - gravity_score), x0.7 on smart-money divergence, x0.6 when overleveraged. xflow: SPOT_DRIVEN 25, BALANCED 18.75, HYPER_SPECULATION 10, x0.4 on mass deleveraging, x0.6 on extreme funding. direction needs at least 2 net votes from gravity, premium, positioning and taker flow.",
+                        "timestamp": 1792779538.1359942,
+                        "data_freshness": "FRESH",
+                        "freshness_ms": 5202
+                      }
+                    }
+                  },
+                  "action_summary": {
+                    "BTCUSDT": {
+                      "action": "WAIT",
+                      "direction_bias": "NEUTRAL",
+                      "risk": "HIGH",
+                      "composite_score": 53.9,
+                      "verdict": "NEUTRAL"
+                    },
+                    "ETHUSDT": {
+                      "action": "ENTER_SHORT",
+                      "direction_bias": "BEARISH",
+                      "risk": "MEDIUM",
+                      "composite_score": 63.2,
+                      "verdict": "PARTIAL_CONVICTION"
+                    }
+                  },
+                  "heatmap_summary": {
+                    "timestamp": "2026-10-23T18:18:58.135997+00:00",
+                    "symbols": {
+                      "BTCUSDT": {
+                        "gravity_direction": "NEUTRAL",
+                        "gravity_score": 0.32,
+                        "crowd_bias": "BALANCED",
+                        "smart_money_divergence": false
+                      }
+                    }
+                  },
+                  "xflow_summary": {
+                    "timestamp": "2026-10-23T18:18:58.135997+00:00",
+                    "symbols": {
+                      "BTCUSDT": {
+                        "market_type": "BALANCED",
+                        "premium_bias": "NEUTRAL",
+                        "positioning": "STABLE",
+                        "funding": 9.284e-05,
+                        "risk": "MEDIUM — Spot and futures activity are within their normal 7-day range.",
+                        "total_oi_usd_3_venues": 15098166798.31,
+                        "oi_weighted_funding_rate": 9.613e-05
+                      }
+                    }
+                  },
+                  "composite_summary": {
+                    "timestamp": "2026-10-23T18:18:58.135997+00:00",
+                    "climate": "CHOP/HEALTHY",
+                    "ignition": "DORMANT(ign=0.37)",
+                    "symbols": {
+                      "BTCUSDT": {
+                        "score": 53.9,
+                        "verdict": "NEUTRAL",
+                        "direction": "NEUTRAL",
+                        "one_liner": "FLAT BTCUSDT — No stretched positioning"
+                      }
+                    }
+                  },
+                  "stale_excluded": [],
+                  "climate": {
+                    "market_mode": "CHOP",
+                    "health": "HEALTHY",
+                    "confidence": 0.55,
+                    "reason": "EMA50 slope: +0.51% | RSI: 46 | ATR ratio: 0.85 | Vol ratio: 0.02 | Dir changes: 7/8",
+                    "timestamp": "2026-10-23T18:15:31.261555+00:00",
+                    "timestamp_epoch": 1792779331.2615669,
+                    "target": "GLOBAL_BTC_MACRO"
+                  },
+                  "ignition": {
+                    "timestamp": "2026-10-23T18:18:34.033602+00:00",
+                    "regime": "DORMANT",
+                    "regime_bias": "RISING",
+                    "global_ignition": 0.3749,
+                    "delta": 0.0035,
+                    "stability_score": 1.0,
+                    "metrics": {
+                      "avg_ignition": 0.5348,
+                      "pct_above_0_6": 0.3797,
+                      "pct_above_0_8": 0.0455,
+                      "total_tracked": 748
+                    }
+                  },
+                  "note": "Example trimmed to BTCUSDT; the live response covers 10 symbols."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intelligence/cortex": {
+      "get": {
+        "tags": [
+          "Market Regime"
+        ],
+        "summary": "Horus Cortex",
+        "description": "BTC market regime, trust score (0-100), contradictions between evidence families, invalidation and breakout levels, and position-size multipliers by strategy type. English and Arabic narrative.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "get_cortex",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "status": "success",
+                  "timestamp": 1792779543.4136393,
+                  "timestamp_utc": "2026-10-23T18:19:03.413641+00:00",
+                  "engine": "Horus Cortex Symphony v3.0",
+                  "regime_state": "HEALTHY_CONSOLIDATION",
+                  "transition_direction": "STABLE",
+                  "trust_score": 32.6,
+                  "trust_components": {
+                    "price_structure": 0.5,
+                    "sr_map": 0.45,
+                    "orderflow": 0.44,
+                    "lagging_witnesses": 0.5,
+                    "cycle_memory": 0.31,
+                    "breadth_rs": 0.5,
+                    "anomaly": 0.5
+                  },
+                  "penalties": {
+                    "contradiction": 6.0,
+                    "stale_evidence": 0.0
+                  },
+                  "action_policy": {
+                    "directive": "Neural Cognitive Sovereign Matrix (HEALTHY_CONSOLIDATION) (Stage=CONFIRMED | Falcon=0.07x, Stalker=0.9x, Sniper=0.7x, Magnet=0.02x)",
+                    "ignition_multiplier": 0.07,
+                    "trend_multiplier": 0.9,
+                    "reversal_multiplier": 0.7,
+                    "shock_multiplier": 0.02,
+                    "ignition_allowed": false,
+                    "trend_allowed": true,
+                    "reversal_allowed": true
+                  },
+                  "execution_boundaries": {
+                    "btc_price": 81656.0,
+                    "invalidation_support": 81099.0,
+                    "breakout_resistance": 82472.56,
+                    "invalidation_risk_pct": 0.68,
+                    "breakout_target_pct": 1.0
+                  },
+                  "market_vitals": {
+                    "taker_ratio": 0.98,
+                    "global_ignition": 0.371,
+                    "global_dominant_gravity": "NEUTRAL",
+                    "btc_15m_return_pct": 0.125,
+                    "btc_1h_return_pct": 0.013
+                  },
+                  "active_contradictions": [
+                    {
+                      "contradiction_id": "MOMENTUM_vs_RESISTANCE_EXHAUSTION",
+                      "category": "SR_VS_MOMENTUM",
+                      "severity": "HIGH",
+                      "description": "السعر عند مقاومة رئيسية في مرحلة متأخرة مع علامات استنفاد",
+                      "evidence_a": "SR_MAP: RESISTANCE",
+                      "evidence_b": "CYCLE: EXHAUSTION",
+                      "duration_cycles": 6578,
+                      "first_seen_iso": "2026-10-23T03:00:11.254295+00:00",
+                      "last_seen_iso": "2026-10-23T18:18:59.443895+00:00",
+                      "resolution_status": "ACTIVE",
+                      "description_en": "Momentum Vs Resistance Exhaustion"
+                    }
+                  ],
+                  "narrative": {
+                    "headline": "🎼 تقرير عقل حورس: تماسك صحي واستيعاب للمكاسب (موثوقية 33%)",
+                    "summary_arabic": "السوق يمر بحالة [تماسك صحي واستيعاب للمكاسب] بدرجة أمان (33/100) — مرحلة التأهيل: CONFIRMED.\nالدورة الكبرى: اختبار ودفاع عن قاع النطاق الأسبوعي (Weekly Floor Defense) (تموضع أسبوعي: 23.1%).\nذاكرة الأمس: شمعة أمس هابطة بتدفق تصريفي عالي (-3.2%) وإغلاق عند القاع (14%) (المدى: $80,940 ➔ $84,377).\nالبيتكوين عند $81,656 (تغير 15د: +0.13%) ونسبة صانع/آخذ السوق 0.98.\nالتفسير والتحليل: البيتكوين يثبت في مناطق عليا بعد موجة الصعود، مع تذبذب هادئ وهدوء طبيعي في شريط الصفقات دون ظهور كسر للدعوم أو تصريف حقيقي.",
+                    "summary_english": "Market State: HEALTHY_CONSOLIDATION | Trust Score: 33/100 | Direction: STABLE",
+                    "supporting_evidence": [
+                      "تدفق شرائي متزن يدعم السعر (Taker: 0.98)"
+                    ],
+                    "risk_factors": [
+                      "جاذبية تصفيات محلية لـ BTC تشير لأسفل",
+                      "دورة متقدمة ومستهلكة: 6578 محاولات لاختراق المقاومة",
+                      "الدورة الكبرى (7D): تموضع عند 23.1% من النطاق الأسبوعي ($80,684 ➔ $84,898) | اتجاه 4H: BEARISH_PULLBACK",
+                      "ذاكرة الأمس: تصريف بيعي حاد (-3.18%) يفرض الحذر من فخاخ الارتداد الوهمي"
+                    ],
+                    "what_improves_verdict": [
+                      "اختراق قمة أمس ($84,377) والثبات التداولي أعلاها.",
+                      "تسارع تدفق الشراء التنافسي (Taker الحالي: 0.98 ➔ صعود فوق 1.15 مع كفاءة سعرية).",
+                      "اتساع اشتعال السوق الكلي (Global Ignition الحالي: 0.37 ➔ مطلوب تجاوزه 0.45 لدعم الزخم)."
+                    ],
+                    "what_worsens_verdict": [
+                      "كسر الدعم الهيكلي الرئيسي عند $81,099 والإغلاق أسفله.",
+                      "كسر قاع الأمس ($80,940) والنزول دونه.",
+                      "تراجع نسبة الشراء التنافسي (Taker الحالي: 0.98 ➔ هبوط تحت 0.85 مع ظهور بيع هجومي)."
+                    ],
+                    "human_verdict": "البيتكوين يثبت في مناطق عليا بعد موجة الصعود، مع تذبذب هادئ وهدوء طبيعي في شريط الصفقات دون ظهور كسر للدعوم أو تصريف حقيقي.",
+                    "macro_cycle_context": "الدورة الكبرى: اختبار ودفاع عن قاع النطاق الأسبوعي (Weekly Floor Defense) | تموضع أسبوعي: 23.1% ($80,684 ➔ $84,898) | اتجاه 4H: BEARISH_PULLBACK",
+                    "timestamp_iso": "2026-10-23T18:19:00.018461+00:00",
+                    "headline_en": "Horus Cortex: Healthy Consolidation regime, trust 33/100"
+                  },
+                  "evidence_ledger": [
+                    {
+                      "family": "PRICE_STRUCTURE",
+                      "signal": "RANGE_CHOP_CONSOLIDATION",
+                      "direction": "NEUTRAL",
+                      "raw_value": 0.12505822828332444,
+                      "normalized_score": 0.5,
+                      "freshness": 0.9996334005473403,
+                      "reliability": 0.85,
+                      "description": "تذبذب طبيعي ضمن نطاق تماسك واستيعاب للمكاسب (15د: +0.13% | 24س: +0.34%)",
+                      "timestamp_iso": "2026-10-23T18:18:59.443895+00:00",
+                      "age_ms": 11
+                    },
+                    {
+                      "family": "SR_MAP",
+                      "signal": "NEAR_MAJOR_RESISTANCE",
+                      "direction": "NEUTRAL",
+                      "raw_value": 0.49583619084942276,
+                      "normalized_score": 0.45,
+                      "freshness": 0.9996334005473403,
+                      "reliability": 0.92,
+                      "description": "السعر يقترب من مقاومة ($82,061) على بعد 0.50%",
+                      "timestamp_iso": "2026-10-23T18:18:59.443895+00:00",
+                      "age_ms": 11
+                    }
+                  ],
+                  "data_freshness": "FRESH",
+                  "freshness_ms": 3957
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intelligence/climate": {
+      "get": {
+        "tags": [
+          "Market Regime"
+        ],
+        "summary": "BTC climate",
+        "description": "WiseMan BTC climate: mode (trend, range, chop), health and confidence, with the reasoning inputs.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_climate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "action": "WAIT",
+                  "direction_bias": "NEUTRAL",
+                  "risk": "HIGH",
+                  "market_regime": "CHOP",
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 212176,
+                  "timestamp_utc": "2026-10-23T18:19:03.438027+00:00",
+                  "explanation": "Choppy conditions, scalps only",
+                  "market_mode": "CHOP",
+                  "health": "HEALTHY",
+                  "confidence": 0.55,
+                  "recommendation": "🟡 CAUTION — Choppy conditions, scalps only",
+                  "reasoning": "EMA50 slope: +0.51% | RSI: 46 | ATR ratio: 0.85 | Vol ratio: 0.02 | Dir changes: 7/8",
+                  "aggression_level": 0.5,
+                  "timestamp": "2026-10-23T18:15:31.261555+00:00",
+                  "engine": "WiseMan Cognitive Gate v64.0"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intelligence/ignitions": {
+      "get": {
+        "tags": [
+          "Market Regime"
+        ],
+        "summary": "Breakout scanner",
+        "description": "Volatility-breakout scores (0-1) across about 750 crypto assets, refreshed every minute: global regime and the top assets. A ranking of breakout conditions, not a probability of a move.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_ignitions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "action": "WAIT",
+                  "direction_bias": "BULLISH",
+                  "risk": "LOW",
+                  "market_regime": "RANGING",
+                  "engine_version": "2.1.0",
+                  "timestamp_utc": "2026-10-23T18:19:03.542335+00:00",
+                  "regime": "DORMANT",
+                  "regime_bias": "RISING",
+                  "global_ignition_score": 0.3749,
+                  "delta": 0.0035,
+                  "stability": 1.0,
+                  "summary": {
+                    "total_tracked": 748,
+                    "avg_ignition": 0.5348,
+                    "pct_above_0_6": 38.0,
+                    "pct_above_0_8": 4.5
+                  },
+                  "top_ignitions": [
+                    {
+                      "symbol": "AKE/USDT",
+                      "ignition_score": 0.992,
+                      "status": "🔥 IGNITED"
+                    },
+                    {
+                      "symbol": "UNITREE/USDT",
+                      "ignition_score": 0.973,
+                      "status": "🔥 IGNITED"
+                    },
+                    {
+                      "symbol": "INIT/USDT",
+                      "ignition_score": 0.953,
+                      "status": "🔥 IGNITED"
+                    },
+                    {
+                      "symbol": "ACU/USDT",
+                      "ignition_score": 0.929,
+                      "status": "🔥 IGNITED"
+                    },
+                    {
+                      "symbol": "WET/USDT",
+                      "ignition_score": 0.92,
+                      "status": "🔥 IGNITED"
+                    }
+                  ],
+                  "timestamp": "2026-10-23T18:18:34.033602+00:00",
+                  "engine": "Volatility Breakout Engine (VBE)"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/track-record": {
+      "get": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Live track record",
+        "description": "Measured hit rates of every directional signal at 1, 5, 15 and 30 minutes, by signal and by confidence bucket, from every signal recorded live since August 2026. Many signals are close to 50%; this endpoint says so.\n\nPlans: all, including BASIC (free).",
+        "operationId": "get_track_record",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "generated_at": "2026-10-23T18:10:25.214921+00:00",
+                  "window": "30d",
+                  "ledger": {
+                    "first_signal_utc": "2026-08-15T08:11:37.149001+00:00",
+                    "last_signal_utc": "2026-10-23T18:10:09.350013+00:00",
+                    "total_signals": 65574,
+                    "symbols": [
+                      "BTCUSDT",
+                      "ETHUSDT",
+                      "SOLUSDT"
+                    ]
+                  },
+                  "method": "Each directional signal (bullish or bearish) is recorded with the Binance price at emission, at most once per symbol and direction every 5 minutes. A hit means the price 1/5/15/30 minutes later moved in the signal's direction; an unchanged price counts as a miss. avg_directional_move_bps is the mean move in the signal's direction in basis points (negative = the market went the other way). Fees are not deducted. A coin flip scores 50%.",
+                  "coin_flip": 0.5,
+                  "overall": {
+                    "1m": {
+                      "samples": 28459,
+                      "hit_rate": 0.4996,
+                      "tie_rate": 0.0414,
+                      "avg_directional_move_bps": 0.1
+                    },
+                    "5m": {
+                      "samples": 28457,
+                      "hit_rate": 0.5069,
+                      "tie_rate": 0.0108,
+                      "avg_directional_move_bps": 0.22
+                    },
+                    "15m": {
+                      "samples": 28450,
+                      "hit_rate": 0.5,
+                      "tie_rate": 0.0066,
+                      "avg_directional_move_bps": 0.41
+                    },
+                    "30m": {
+                      "samples": 28441,
+                      "hit_rate": 0.5027,
+                      "tie_rate": 0.0042,
+                      "avg_directional_move_bps": 0.55
+                    }
+                  },
+                  "by_signal": {
+                    "BUY_PRESSURE": {
+                      "1m": {
+                        "samples": 1575,
+                        "hit_rate": 0.5225,
+                        "tie_rate": 0.0571,
+                        "avg_directional_move_bps": 0.39
+                      },
+                      "5m": {
+                        "samples": 1575,
+                        "hit_rate": 0.5327,
+                        "tie_rate": 0.0133,
+                        "avg_directional_move_bps": 0.73
+                      },
+                      "15m": {
+                        "samples": 1574,
+                        "hit_rate": 0.5025,
+                        "tie_rate": 0.0044,
+                        "avg_directional_move_bps": 0.25
+                      },
+                      "30m": {
+                        "samples": 1574,
+                        "hit_rate": 0.5044,
+                        "tie_rate": 0.0032,
+                        "avg_directional_move_bps": -0.26
+                      }
+                    },
+                    "DEPTH_COLLAPSE": {
+                      "1m": {
+                        "samples": 991,
+                        "hit_rate": 0.5136,
+                        "tie_rate": 0.0061,
+                        "avg_directional_move_bps": 0.02
+                      },
+                      "5m": {
+                        "samples": 991,
+                        "hit_rate": 0.5227,
+                        "tie_rate": 0.002,
+                        "avg_directional_move_bps": 0.04
+                      },
+                      "15m": {
+                        "samples": 991,
+                        "hit_rate": 0.5146,
+                        "tie_rate": 0.001,
+                        "avg_directional_move_bps": 0.23
+                      },
+                      "30m": {
+                        "samples": 991,
+                        "hit_rate": 0.5066,
+                        "tie_rate": 0.004,
+                        "avg_directional_move_bps": 1.56
+                      }
+                    },
+                    "EMERGENCY_DUMP": {
+                      "1m": {
+                        "samples": 1769,
+                        "hit_rate": 0.5133,
+                        "tie_rate": 0.0322,
+                        "avg_directional_move_bps": 0.27
+                      },
+                      "5m": {
+                        "samples": 1769,
+                        "hit_rate": 0.5116,
+                        "tie_rate": 0.0079,
+                        "avg_directional_move_bps": -0.07
+                      },
+                      "15m": {
+                        "samples": 1769,
+                        "hit_rate": 0.4788,
+                        "tie_rate": 0.0068,
+                        "avg_directional_move_bps": -0.64
+                      },
+                      "30m": {
+                        "samples": 1769,
+                        "hit_rate": 0.4715,
+                        "tie_rate": 0.0045,
+                        "avg_directional_move_bps": -0.75
+                      }
+                    }
+                  },
+                  "by_confidence": {
+                    "0.75-0.85": {
+                      "1m": {
+                        "samples": 13010,
+                        "hit_rate": 0.49,
+                        "tie_rate": 0.0523,
+                        "avg_directional_move_bps": 0.07
+                      },
+                      "5m": {
+                        "samples": 13009,
+                        "hit_rate": 0.5027,
+                        "tie_rate": 0.0161,
+                        "avg_directional_move_bps": 0.23
+                      },
+                      "15m": {
+                        "samples": 13006,
+                        "hit_rate": 0.5035,
+                        "tie_rate": 0.0095,
+                        "avg_directional_move_bps": 0.53
+                      },
+                      "30m": {
+                        "samples": 13002,
+                        "hit_rate": 0.5032,
+                        "tie_rate": 0.0062,
+                        "avg_directional_move_bps": 0.83
+                      }
+                    },
+                    "0.85-0.95": {
+                      "1m": {
+                        "samples": 8215,
+                        "hit_rate": 0.4992,
+                        "tie_rate": 0.0337,
+                        "avg_directional_move_bps": 0.07
+                      },
+                      "5m": {
+                        "samples": 8214,
+                        "hit_rate": 0.4999,
+                        "tie_rate": 0.0067,
+                        "avg_directional_move_bps": 0.09
+                      },
+                      "15m": {
+                        "samples": 8212,
+                        "hit_rate": 0.4911,
+                        "tie_rate": 0.0049,
+                        "avg_directional_move_bps": 0.28
+                      },
+                      "30m": {
+                        "samples": 8208,
+                        "hit_rate": 0.5034,
+                        "tie_rate": 0.0026,
+                        "avg_directional_move_bps": 0.15
+                      }
+                    },
+                    "<0.75": {
+                      "1m": {
+                        "samples": 4420,
+                        "hit_rate": 0.5077,
+                        "tie_rate": 0.0281,
+                        "avg_directional_move_bps": 0.09
+                      },
+                      "5m": {
+                        "samples": 4420,
+                        "hit_rate": 0.5204,
+                        "tie_rate": 0.0054,
+                        "avg_directional_move_bps": 0.42
+                      },
+                      "15m": {
+                        "samples": 4419,
+                        "hit_rate": 0.5119,
+                        "tie_rate": 0.0025,
+                        "avg_directional_move_bps": 0.66
+                      },
+                      "30m": {
+                        "samples": 4418,
+                        "hit_rate": 0.51,
+                        "tie_rate": 0.002,
+                        "avg_directional_move_bps": 0.88
+                      }
+                    },
+                    ">=0.95": {
+                      "1m": {
+                        "samples": 2814,
+                        "hit_rate": 0.5327,
+                        "tie_rate": 0.0341,
+                        "avg_directional_move_bps": 0.36
+                      },
+                      "5m": {
+                        "samples": 2814,
+                        "hit_rate": 0.5256,
+                        "tie_rate": 0.0068,
+                        "avg_directional_move_bps": 0.25
+                      },
+                      "15m": {
+                        "samples": 2813,
+                        "hit_rate": 0.4913,
+                        "tie_rate": 0.0053,
+                        "avg_directional_move_bps": -0.18
+                      },
+                      "30m": {
+                        "samples": 2813,
+                        "hit_rate": 0.4867,
+                        "tie_rate": 0.0032,
+                        "avg_directional_move_bps": -0.12
+                      }
+                    }
+                  },
+                  "point_in_time_ledger": "/v1/track-record/signals?symbol=BTCUSDT&start=2026-10-01&end=2026-10-08",
+                  "note": "Example trimmed to 3 signals; the live response lists every signal."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "description": "30d or all",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "30d",
+                "all"
+              ],
+              "default": "30d"
+            }
+          },
+          {
+            "name": "detail",
+            "in": "query",
+            "required": false,
+            "description": "Include the per signal and symbol breakdown",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ]
+      }
+    },
+    "/v1/track-record/signals": {
+      "get": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Signal ledger for backtesting",
+        "description": "Point-in-time ledger: every signal emitted for BTCUSDT, ETHUSDT or SOLUSDT between start and end, with the price and the move 1/5/15/30 minutes later. Maximum range 31 days.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_signal_ledger",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "BTCUSDT",
+                  "start_utc": "2026-10-22T18:19:03.587049+00:00",
+                  "end_utc": "2026-10-23T18:19:03.587049+00:00",
+                  "count": 2,
+                  "truncated": true,
+                  "method": "Each directional signal (bullish or bearish) is recorded with the Binance price at emission, at most once per symbol and direction every 5 minutes. A hit means the price 1/5/15/30 minutes later moved in the signal's direction; an unchanged price counts as a miss. avg_directional_move_bps is the mean move in the signal's direction in basis points (negative = the market went the other way). Fees are not deducted. A coin flip scores 50%.",
+                  "signals": [
+                    {
+                      "time_utc": "2026-10-22T18:20:34.834591+00:00",
+                      "signal": "EMERGENCY_DUMP",
+                      "direction_bias": "BEARISH",
+                      "confidence": 0.99,
+                      "price": 81241.03,
+                      "move_pct": {
+                        "1m": 0.008604026807642936,
+                        "5m": -0.02343643353610066,
+                        "15m": 0.0038527330340403813,
+                        "30m": 0.1809307439849116
+                      },
+                      "hit": {
+                        "1m": false,
+                        "5m": true,
+                        "15m": false,
+                        "30m": false
+                      }
+                    },
+                    {
+                      "time_utc": "2026-10-22T18:25:45.045335+00:00",
+                      "signal": "SELL_PRESSURE",
+                      "direction_bias": "BEARISH",
+                      "confidence": 0.7,
+                      "price": 81222.0,
+                      "move_pct": {
+                        "1m": -0.0319987195587467,
+                        "5m": -0.05525596513260528,
+                        "15m": 0.036948117505103004,
+                        "30m": 0.1994533500775652
+                      },
+                      "hit": {
+                        "1m": true,
+                        "5m": true,
+                        "15m": false,
+                        "30m": false
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "description": "BTCUSDT, ETHUSDT or SOLUSDT",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "default": "BTCUSDT"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "description": "ISO 8601 date or time, or epoch seconds. Default: 24h before end.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-10-20"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "description": "ISO 8601 date or time, or epoch seconds. Default: now.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-10-21"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum rows",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000,
+              "default": 1000
+            }
+          }
+        ]
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Recent events",
+        "description": "What changed since your last check, oldest first: liquidation_cascade, strong_flow_signal, composite_change, cortex_regime_change, climate_change, ignition_alert, us_session_change, trading_halt. Pass the last id you received as since_id.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_events",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "count": 2,
+                  "last_id": 115,
+                  "event_types": [
+                    "liquidation_cascade",
+                    "strong_flow_signal",
+                    "composite_change",
+                    "cortex_regime_change",
+                    "climate_change",
+                    "ignition_alert",
+                    "us_session_change",
+                    "trading_halt"
+                  ],
+                  "events": [
+                    {
+                      "id": 114,
+                      "type": "composite_change",
+                      "symbol": "AVAXUSDT",
+                      "time_utc": "2026-10-23T18:18:11+00:00",
+                      "data": {
+                        "from": {
+                          "verdict": "NEUTRAL",
+                          "direction": "SHORT"
+                        },
+                        "to": {
+                          "verdict": "NEUTRAL",
+                          "direction": "NEUTRAL"
+                        },
+                        "composite_score": 53.8,
+                        "one_liner": "FLAT AVAXUSDT — No stretched positioning"
+                      }
+                    },
+                    {
+                      "id": 115,
+                      "type": "ignition_alert",
+                      "symbol": null,
+                      "time_utc": "2026-10-23T18:18:42+00:00",
+                      "data": {
+                        "assets": [
+                          {
+                            "symbol": "BARD/USDT",
+                            "ignition_score": 0.811
+                          },
+                          {
+                            "symbol": "ZS/USDT",
+                            "ignition_score": 0.807
+                          }
+                        ],
+                        "count": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "since_id",
+            "in": "query",
+            "required": false,
+            "description": "Return events with a higher id",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "types",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated event types to keep",
+            "schema": {
+              "type": "string"
+            },
+            "example": "liquidation_cascade,trading_halt"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum events",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          }
+        ]
+      }
+    },
+    "/v1/webhooks": {
+      "get": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "List webhooks",
+        "description": "Webhooks registered with your key. Secrets are not shown again.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "list_webhooks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "webhooks": [
+                    {
+                      "id": "wh_3f9c1a2b4d5e6f70",
+                      "url": "https://example.com/horus",
+                      "types": [
+                        "liquidation_cascade"
+                      ],
+                      "created_utc": "2026-10-23T18:00:00+00:00",
+                      "consecutive_failures": 0,
+                      "disabled": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Create a webhook",
+        "description": "Register an HTTPS URL for event deliveries. Each delivery is a JSON POST signed with `X-Horus-Signature: sha256=HMAC(secret, X-Horus-Timestamp + \".\" + body)`. The secret is returned once. Up to 5 webhooks per key.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "create_webhook",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "id": "wh_3f9c1a2b4d5e6f70",
+                  "url": "https://example.com/horus",
+                  "types": [
+                    "liquidation_cascade"
+                  ],
+                  "secret": "whsec_example_secret_returned_once",
+                  "created_utc": "2026-10-23T18:00:00+00:00",
+                  "consecutive_failures": 0,
+                  "disabled": false,
+                  "note": "Store the secret now; it is not shown again."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "Public https URL"
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Event types; empty means all"
+                  }
+                }
+              },
+              "example": {
+                "url": "https://example.com/horus",
+                "types": [
+                  "liquidation_cascade",
+                  "trading_halt"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{hook_id}": {
+      "delete": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Delete a webhook",
+        "description": "Delete one of your webhooks.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "delete_webhook",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "deleted": "wh_3f9c1a2b4d5e6f70"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "wh_3f9c1a2b4d5e6f70"
+          }
+        ]
+      }
+    },
+    "/v1/webhooks/{hook_id}/test": {
+      "post": {
+        "tags": [
+          "Agent Layer"
+        ],
+        "summary": "Send a test delivery",
+        "description": "Send a signed test event to one of your webhooks.\n\nPlans: ULTRA, MEGA.",
+        "operationId": "test_webhook",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "delivered": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "wh_3f9c1a2b4d5e6f70"
+          }
+        ]
+      }
+    },
+    "/v1/equity/session": {
+      "get": {
+        "tags": [
+          "US Equities"
+        ],
+        "summary": "US market session",
+        "description": "Session phase (pre-market, regular, after-hours, closed), holidays and early closes, next open and close in New York time, minutes to close, and active trading halts from Nasdaq Trader.\n\nPlans: all, including BASIC (free).",
+        "operationId": "get_us_session",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "now_et": "2026-10-23T14:19:03-04:00",
+                  "phase": "regular",
+                  "is_regular_session": true,
+                  "is_trading_day": true,
+                  "holiday": null,
+                  "early_close_today": null,
+                  "regular_hours_et": "09:30-16:00",
+                  "next_open_et": "2026-10-26T09:30-04:00",
+                  "next_close_et": "2026-10-23T16:00-04:00",
+                  "minutes_to_close": 100,
+                  "upcoming_holidays": [
+                    {
+                      "date": "2026-11-26",
+                      "name": "Thanksgiving Day"
+                    },
+                    {
+                      "date": "2026-12-25",
+                      "name": "Christmas Day"
+                    },
+                    {
+                      "date": "2027-01-01",
+                      "name": "New Year's Day"
+                    }
+                  ],
+                  "upcoming_early_closes": [
+                    {
+                      "date": "2026-11-27",
+                      "name": "Day after Thanksgiving",
+                      "close_et": "13:00"
+                    },
+                    {
+                      "date": "2026-12-24",
+                      "name": "Christmas Eve",
+                      "close_et": "13:00"
+                    }
+                  ],
+                  "calendar_valid_until": "2027-12-31",
+                  "agent_hint": "Regular session: liquidity is normal.",
+                  "halts": {
+                    "source": "Nasdaq Trader trade halts RSS (all US listings)",
+                    "fetched_at_utc": "2026-10-23T18:18:29.965274+00:00",
+                    "active_count": 14,
+                    "active": [
+                      {
+                        "symbol": "ELME",
+                        "name": "Elme Communities Common Stock",
+                        "market": "NYSE",
+                        "reason_code": "H11",
+                        "reason": "Regulatory concern",
+                        "halt_date": "10/23/2026",
+                        "halt_time_et": "09:26:04.661",
+                        "resumption_date": null,
+                        "resumption_trade_time_et": null
+                      },
+                      {
+                        "symbol": "ZONE",
+                        "name": "Zone Frontier Inc.",
+                        "market": "AMEX",
+                        "reason_code": "H11",
+                        "reason": "Regulatory concern",
+                        "halt_date": "10/19/2026",
+                        "halt_time_et": "01:47:35.541",
+                        "resumption_date": null,
+                        "resumption_trade_time_et": null
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/equity/halts": {
+      "get": {
+        "tags": [
+          "US Equities"
+        ],
+        "summary": "US trading halts",
+        "description": "All US trading halts published today by Nasdaq Trader, with plain-language reasons and resumption times.\n\nPlans: all, including BASIC (free).",
+        "operationId": "get_us_halts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "source": "Nasdaq Trader trade halts RSS (all US listings)",
+                  "fetched_at_utc": "2026-10-23T18:18:29.965274+00:00",
+                  "active_count": 14,
+                  "today_count": 68,
+                  "active": [
+                    {
+                      "symbol": "ELME",
+                      "name": "Elme Communities Common Stock",
+                      "market": "NYSE",
+                      "reason_code": "H11",
+                      "reason": "Regulatory concern",
+                      "halt_date": "10/23/2026",
+                      "halt_time_et": "09:26:04.661",
+                      "resumption_date": null,
+                      "resumption_trade_time_et": null
+                    },
+                    {
+                      "symbol": "ZONE",
+                      "name": "Zone Frontier Inc.",
+                      "market": "AMEX",
+                      "reason_code": "H11",
+                      "reason": "Regulatory concern",
+                      "halt_date": "10/19/2026",
+                      "halt_time_et": "01:47:35.541",
+                      "resumption_date": null,
+                      "resumption_trade_time_et": null
+                    }
+                  ],
+                  "error": null,
+                  "today": [
+                    {
+                      "symbol": "BRAI",
+                      "name": "Braiin Limited Common Stock",
+                      "market": "NASDAQ",
+                      "reason_code": "LUDP",
+                      "reason": "Volatility pause (LULD)",
+                      "halt_date": "10/23/2026",
+                      "halt_time_et": "13:40:03.590",
+                      "resumption_date": "10/23/2026",
+                      "resumption_trade_time_et": "13:45:03"
+                    },
+                    {
+                      "symbol": "ROMA",
+                      "name": "Roma Grn Fin Ltd Ord A",
+                      "market": "NASDAQ",
+                      "reason_code": "LUDP",
+                      "reason": "Volatility pause (LULD)",
+                      "halt_date": "10/23/2026",
+                      "halt_time_et": "12:54:44.616",
+                      "resumption_date": "10/23/2026",
+                      "resumption_trade_time_et": "13:04:44"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum rows",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          }
+        ]
+      }
+    },
+    "/v1/flow/equity/{symbol}": {
+      "get": {
+        "tags": [
+          "US Equities"
+        ],
+        "summary": "US stock or ETF order flow",
+        "description": "Order flow from the IEX feed for one US stock or ETF. IEX is about 3% of US consolidated volume, so readings are a sample and extreme verdicts are capped. Outside market hours returns MARKET_CLOSED.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_equity_flow",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "symbol": "SPY",
+                  "signal": "SELL_PRESSURE",
+                  "action": "BLOCK_LONG",
+                  "direction_bias": "BEARISH",
+                  "confidence": 0.6,
+                  "risk": "HIGH",
+                  "market_regime": "RANGING",
+                  "engine_version": "2.1.0",
+                  "freshness_ms": 0,
+                  "timestamp_utc": "2026-10-23T18:19:03.666895+00:00",
+                  "explanation": "Large sells: 15 sells above $50,000 each in the last 5m. [IEX sample, ~3% of US volume]",
+                  "market_state": "DISTRIBUTION",
+                  "description": "VERDICT: DOWN 🩸 | ⏱️ 30-SEC PROJECTION: LIQUIDITY ABSORPTION ➖ (Toxicity: 19% | Gamma: 0.3x)\nLarge sells: 15 sells above $50,000 each in the last 5m.",
+                  "metrics": {
+                    "bid_ask_ratio": 5.0,
+                    "buy_sell_ratio": 0.372,
+                    "delta_5s": 14461.395,
+                    "delta_30s": -73079.245,
+                    "imbalance_stability": 0.562,
+                    "delta_5m": 2060718.235,
+                    "price": 0.0,
+                    "whale_activity": true,
+                    "large_sell_count": 15,
+                    "large_trade_threshold_usd": 50000.0,
+                    "large_sell_window_s": 300,
+                    "sell_spike": false,
+                    "spy_buy_ratio_iex": 0.372,
+                    "delta_accel": 0.3,
+                    "wall_side": null,
+                    "top5_imbalance": 0.8333,
+                    "spread_pct": 0.0026,
+                    "refill_ratio": 1.0,
+                    "bid_depth_change_pct": 177.8,
+                    "ask_depth_change_pct": 0.0,
+                    "wiseman_climate": {
+                      "market_mode": "RANGE_BOUND",
+                      "health": "NORMAL",
+                      "confidence": 0.5
+                    },
+                    "flags": [
+                      "LARGE_SELLS(15)",
+                      "WISEMAN_APPROVED(SAFE)",
+                      "IEX_SAMPLE"
+                    ]
+                  },
+                  "whale_intent": null,
+                  "data_source": {
+                    "feed": "IEX via Alpaca",
+                    "coverage_note": "IEX is roughly 3% of US consolidated volume. Ratios and prints are a sample of the tape, not the full market."
+                  },
+                  "reliability": null,
+                  "timestamp": 1792779543.666911
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "SPY",
+            "description": "US ticker, e.g. SPY, QQQ, NVDA"
+          }
+        ]
+      }
+    },
+    "/v1/flow/equity/macro-blocks": {
+      "get": {
+        "tags": [
+          "US Equities"
+        ],
+        "summary": "SPY skew and large IEX prints",
+        "description": "SPY aggressive buy/sell skew over the last 30 seconds and IEX prints of $200,000 or more in the last 5 minutes.\n\nPlans: all, including BASIC (free).",
+        "operationId": "get_macro_blocks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "timestamp": 1792779543.6786737,
+                  "timestamp_utc": "2026-10-23T18:19:03.678701+00:00",
+                  "spy_macro_climate": {
+                    "market_mode": "SELL_SKEW",
+                    "spy_buy_ratio": 0.37,
+                    "window": "aggressive IEX trades, last 30s"
+                  },
+                  "recent_block_trades": [
+                    {
+                      "symbol": "QQQ",
+                      "price": 705.83,
+                      "size": 300.0,
+                      "notional": 211749.0,
+                      "is_sell": true,
+                      "seconds_ago": 69
+                    },
+                    {
+                      "symbol": "SPY",
+                      "price": 760.96,
+                      "size": 373.0,
+                      "notional": 283838.08,
+                      "is_sell": false,
+                      "seconds_ago": 129
+                    },
+                    {
+                      "symbol": "SPY",
+                      "price": 760.745,
+                      "size": 400.0,
+                      "notional": 304298.0,
+                      "is_sell": false,
+                      "seconds_ago": 221
+                    }
+                  ],
+                  "block_count": 3,
+                  "block_definition": "single IEX print with notional >= $200,000 in the last 5 minutes",
+                  "data_source": {
+                    "feed": "IEX via Alpaca",
+                    "coverage_note": "IEX is roughly 3% of US consolidated volume. Ratios and prints are a sample of the tape, not the full market."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cross-asset": {
+      "get": {
+        "tags": [
+          "US Equities"
+        ],
+        "summary": "Crypto and US equities side by side",
+        "description": "BTC order flow next to SPY, QQQ, COIN, MSTR and IBIT flow over the last 5 minutes: risk-on together, risk-off together, or diverging. When US markets are closed it says so and keeps BTC as the live gauge.\n\nPlans: PRO, ULTRA, MEGA.",
+        "operationId": "get_cross_asset",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "generated_at": "2026-10-23T18:19:03+00:00",
+                  "us_session": {
+                    "phase": "regular",
+                    "next_open_et": "2026-10-26T09:30-04:00",
+                    "next_close_et": "2026-10-23T16:00-04:00",
+                    "minutes_to_close": 100
+                  },
+                  "btc": {
+                    "signal": "NEUTRAL",
+                    "direction_bias": "NEUTRAL",
+                    "price": 81656.01,
+                    "buy_ratio_5m": 0.646,
+                    "trades_5m": 1652,
+                    "flow_skew": "BUYING"
+                  },
+                  "cortex": {
+                    "regime_state": "HEALTHY_CONSOLIDATION",
+                    "trust_score": 32.6,
+                    "btc_1h_return_pct": 0.013
+                  },
+                  "us_equities": {
+                    "SPY": {
+                      "buy_ratio_5m": 0.667,
+                      "trades_5m": 216,
+                      "price": 761.125,
+                      "flow_skew": "BUYING"
+                    },
+                    "QQQ": {
+                      "buy_ratio_5m": 0.368,
+                      "trades_5m": 98,
+                      "price": 706.09,
+                      "flow_skew": "SELLING"
+                    },
+                    "COIN": {
+                      "buy_ratio_5m": 0.06,
+                      "trades_5m": 88,
+                      "price": 167.085,
+                      "flow_skew": "SELLING"
+                    },
+                    "MSTR": {
+                      "buy_ratio_5m": 0.375,
+                      "trades_5m": 59,
+                      "price": 149.49,
+                      "flow_skew": "SELLING"
+                    },
+                    "IBIT": {
+                      "buy_ratio_5m": 0.236,
+                      "trades_5m": 19,
+                      "price": 46.16,
+                      "flow_skew": "THIN_SAMPLE"
+                    }
+                  },
+                  "alignment": "MIXED",
+                  "note": "Crypto-linked equities do not confirm BTC flow.",
+                  "windows": "Flow skews use aggressive trades over the last 5 minutes (BUYING >= 60% of notional bought, SELLING <= 40%). Fewer than 50 crypto or 30 equity trades is reported as THIN_SAMPLE.",
+                  "data_source": {
+                    "crypto": "Binance spot public stream",
+                    "equities": "IEX via Alpaca, about 3% of US consolidated volume (sample)"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Service status",
+        "description": "Freshness and uptime of every data source behind the API.\n\nPlans: all, including BASIC (free).",
+        "operationId": "get_status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "generated_at": "2026-10-23T18:19:03.714925+00:00",
+                  "overall": "degraded",
+                  "components": [
+                    {
+                      "name": "binance_spot_stream",
+                      "label": "Binance spot order book and trades",
+                      "status": "ok",
+                      "age_seconds": 0,
+                      "max_age_seconds": 30,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/flow/crypto/{symbol}",
+                        "/v1/flow/crypto/{symbol}/history"
+                      ]
+                    },
+                    {
+                      "name": "derivatives_publisher",
+                      "label": "Binance futures derivatives (OI, funding, positioning)",
+                      "status": "ok",
+                      "age_seconds": 60,
+                      "max_age_seconds": 180,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/intelligence/cross-exchange-flow",
+                        "/v1/intelligence/liquidation-heatmap",
+                        "/v1/intelligence/composite",
+                        "/v1/intelligence/market-intelligence"
+                      ]
+                    },
+                    {
+                      "name": "wiseman_climate",
+                      "label": "WiseMan BTC climate",
+                      "status": "ok",
+                      "age_seconds": 204,
+                      "max_age_seconds": 900,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/intelligence/climate"
+                      ]
+                    },
+                    {
+                      "name": "ignition_scanner",
+                      "label": "Ignition scanner",
+                      "status": "ok",
+                      "age_seconds": 21,
+                      "max_age_seconds": 600,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/intelligence/ignitions"
+                      ]
+                    },
+                    {
+                      "name": "cortex",
+                      "label": "Horus Cortex",
+                      "status": "ok",
+                      "age_seconds": 1,
+                      "max_age_seconds": 600,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/intelligence/cortex"
+                      ]
+                    },
+                    {
+                      "name": "incubator",
+                      "label": "Behavioral Court / Incubator",
+                      "status": "down",
+                      "age_seconds": null,
+                      "max_age_seconds": null,
+                      "uptime_24h_pct": 0.0,
+                      "uptime_7d_pct": 0.0,
+                      "endpoints": [
+                        "/v1/intelligence/verdict/{symbol}",
+                        "/v1/intelligence/incubator"
+                      ]
+                    },
+                    {
+                      "name": "alpaca_iex_stream",
+                      "label": "US equities (IEX sample via Alpaca)",
+                      "status": "ok",
+                      "age_seconds": 0,
+                      "max_age_seconds": 120,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/flow/equity/{symbol}",
+                        "/v1/flow/equity/macro-blocks",
+                        "/v1/cross-asset"
+                      ]
+                    },
+                    {
+                      "name": "us_halts_feed",
+                      "label": "US trading halts (Nasdaq Trader)",
+                      "status": "ok",
+                      "age_seconds": 25,
+                      "max_age_seconds": 1200,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/equity/session",
+                        "/v1/equity/halts"
+                      ]
+                    },
+                    {
+                      "name": "event_detector",
+                      "label": "Agent events and webhooks",
+                      "status": "ok",
+                      "age_seconds": 13,
+                      "max_age_seconds": 120,
+                      "uptime_24h_pct": 97.78,
+                      "uptime_7d_pct": 97.78,
+                      "endpoints": [
+                        "/v1/events",
+                        "/v1/events/stream",
+                        "/v1/webhooks"
+                      ]
+                    },
+                    {
+                      "name": "track_record",
+                      "label": "Live signal track record",
+                      "status": "ok",
+                      "age_seconds": 508,
+                      "max_age_seconds": 3600,
+                      "uptime_24h_pct": 100.0,
+                      "uptime_7d_pct": 100.0,
+                      "endpoints": [
+                        "/v1/track-record",
+                        "/v1/track-record/signals"
+                      ]
+                    }
+                  ],
+                  "stream_reconnects_since_start": {
+                    "binance_spot": 0,
+                    "alpaca_iex": 0
+                  },
+                  "note": "Uptime counts one sample per minute. Equity samples outside US market hours are excluded."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not included in your plan (error upgrade_required)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "upgrade_required",
+                    "required_plan": "PRO"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream data is stale or loading; Horus refuses to serve old data",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_stale",
+                    "age_seconds": 412,
+                    "max_age_seconds": 180
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

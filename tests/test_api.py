@@ -774,3 +774,69 @@ def test_rapidapi_public_endpoints_are_counted(fresh_state):
     assert client.get("/v1/status", headers={**h, "X-RapidAPI-Proxy-Secret": "wrong"}).status_code == 200  # forged: not counted
     s = asyncio.run(rapidapi_stats.summary(fresh_state, 1))[0]
     assert s["requests_by_plan"] == {"PRO": 1} and s["top_endpoints"] == {"/v1/status": 1}
+
+
+# ═══════════════════════════ Market scanner ═══════════════════════════
+from app import market_scanner as ms  # noqa: E402
+
+
+def _kl(opens, closes, qvol, taker_buy):
+    return [[0, str(o), "0", "0", str(c), "0", 0, str(q), 0, "0", str(t), "0"] for o, c, q, t in zip(opens, closes, qvol, taker_buy)]
+
+
+def test_scanner_metrics_from_candles():
+    # 12 candles: flat first 45m, then 15m of heavy buying and a 2% rise
+    opens = [100] * 9 + [100, 100.5, 101.2]
+    closes = [100] * 9 + [100.5, 101.2, 102]
+    qvol = [1000] * 9 + [4000, 4000, 4000]
+    tb = [500] * 9 + [3000, 3000, 3000]
+    m = ms.metrics_from_klines(_kl(opens, closes, qvol, tb))
+    assert m["change_15m_pct"] == 2.0 and m["change_1h_pct"] == 2.0
+    assert m["taker_buy_ratio_15m"] == 0.75 and m["volume_surge"] == 4.0
+    assert m["net_taker_flow_15m_usd"] == 6000          # 9000 bought - 3000 sold
+    assert ms.metrics_from_klines(_kl([1] * 5, [1] * 5, [1] * 5, [1] * 5)) is None
+
+
+def _scanner_rows():
+    now = time.time()
+    base = dict(volume_24h_usd=50e6, change_24h_pct=1.0, funding_rate=0.0001, ignition_score=0.5, updated_at=now,
+                price=1.0, change_1h_pct=0.5, taker_buy_ratio_1h=0.5, volume_15m_usd=1e5)
+    rows = {
+        "AAAUSDT": dict(base, symbol="AAAUSDT", taker_buy_ratio_15m=0.70, change_15m_pct=1.2, net_taker_flow_15m_usd=5e5, volume_surge=2.5, ignition_score=0.85),
+        "BBBUSDT": dict(base, symbol="BBBUSDT", taker_buy_ratio_15m=0.62, change_15m_pct=0.4, net_taker_flow_15m_usd=9e5, volume_surge=1.1),
+        "CCCUSDT": dict(base, symbol="CCCUSDT", taker_buy_ratio_15m=0.30, change_15m_pct=-2.0, net_taker_flow_15m_usd=-7e5, volume_surge=3.1, funding_rate=-0.0009),
+        "DDDUSDT": dict(base, symbol="DDDUSDT", taker_buy_ratio_15m=0.80, change_15m_pct=3.0, net_taker_flow_15m_usd=8e5, volume_surge=4.0, volume_24h_usd=2e6),
+        "EEEUSDT": dict(base, symbol="EEEUSDT", taker_buy_ratio_15m=0.55, change_15m_pct=0.1, net_taker_flow_15m_usd=1e5, volume_surge=1.0),
+    }
+    return rows
+
+
+def test_scanner_presets():
+    rows = _scanner_rows()
+    q = lambda p, **kw: [r["symbol"] for r in ms.run_query(rows, p, 10, **kw)]
+    assert q("buyers_in_control") == ["BBBUSDT", "AAAUSDT"]            # DDD excluded by $5M volume floor
+    assert q("buyers_in_control", min_volume_24h=1e6) == ["BBBUSDT", "DDDUSDT", "AAAUSDT"]
+    assert q("sellers_in_control") == ["CCCUSDT"]
+    assert q("volume_surge") == ["CCCUSDT", "AAAUSDT"]
+    assert q("breakout_candidates") == ["AAAUSDT"]
+    assert q("crowded_funding") == ["CCCUSDT"]
+    custom = ms.run_query(rows, None, 10, filters={"min_volume_surge": 2.0}, sort_by="change_15m_pct", descending=False)
+    assert [r["symbol"] for r in custom] == ["CCCUSDT", "AAAUSDT"]
+
+
+def test_scan_endpoint_tiers_and_warmup(monkeypatch):
+    monkeypatch.setitem(ms._state, "rows", {})
+    monkeypatch.setitem(ms._state, "universe", [])
+    assert get("/v1/scan", "builder").status_code == 503
+    rows = {f"S{i:02d}USDT": dict(_scanner_rows()["AAAUSDT"], symbol=f"S{i:02d}USDT", net_taker_flow_15m_usd=1e5 * i) for i in range(10)}
+    monkeypatch.setitem(ms._state, "rows", rows)
+    monkeypatch.setitem(ms._state, "universe", list(rows))
+    monkeypatch.setitem(ms._state, "cycle_at", time.time())
+    free = get("/v1/scan?preset=buyers_in_control&limit=10", "free").json()
+    assert free["count"] == 3 and "upgrade" in free and free["results"][0]["symbol"] == "S09USDT"
+    paid = get("/v1/scan?preset=buyers_in_control&limit=10", "builder").json()
+    assert paid["count"] == 10 and "upgrade" not in paid and paid["coverage"]["universe"] == 10
+    assert set(paid["results"][0]) >= {"symbol", "taker_buy_ratio_15m", "net_taker_flow_15m_usd", "volume_surge", "data_age_s"}
+    custom = get("/v1/scan?preset=custom&min_volume_surge=2&sort_by=change_15m_pct&order=asc&limit=2", "builder").json()
+    assert custom["count"] == 2 and custom["criteria"]["sort_by"] == "change_15m_pct"
+    assert get("/v1/scan?preset=nonsense", "builder").status_code == 422

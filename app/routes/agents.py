@@ -24,8 +24,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from app import events, track_record, us_market
-from app.auth import require_tier
+from app import events, track_record, us_market, market_scanner
+from app.auth import require_tier, verify_api_key, tier_level
 
 router_agents = APIRouter()
 _streams_per_key: Dict[str, int] = defaultdict(int)
@@ -290,3 +290,76 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
                     "SELLING <= 40%). Fewer than 50 crypto or 30 equity trades is reported as THIN_SAMPLE."),
         "data_source": {"crypto": "Binance spot public stream", "equities": "IEX via Alpaca, about 3% of US consolidated volume (sample)"},
     }
+
+
+# ─────────────────────────── market scanner ───────────────────────────
+FREE_SCAN_ROWS = 3
+
+
+@router_agents.get("/scan", tags=["Agents"])
+async def scan_market(
+    preset: str = Query("buyers_in_control", pattern="^(buyers_in_control|sellers_in_control|volume_surge|breakout_candidates|crowded_funding|top_movers|custom)$",
+                        description="A ready question, or custom to use the filters below"),
+    limit: int = Query(20, ge=1, le=100),
+    min_volume_24h: float = Query(market_scanner.SCAN_MIN_VOLUME, ge=1_000_000, description="Minimum 24h futures volume in USD"),
+    min_taker_buy_ratio: Optional[float] = Query(None, ge=0, le=1),
+    max_taker_buy_ratio: Optional[float] = Query(None, ge=0, le=1),
+    min_volume_surge: Optional[float] = Query(None, ge=0),
+    min_ignition: Optional[float] = Query(None, ge=0, le=1),
+    min_change_15m: Optional[float] = Query(None),
+    max_change_15m: Optional[float] = Query(None),
+    min_abs_funding: Optional[float] = Query(None, ge=0),
+    sort_by: str = Query("net_taker_flow_15m_usd", pattern="^(net_taker_flow_15m_usd|taker_buy_ratio_15m|volume_surge|change_15m_pct|change_1h_pct|change_24h_pct|ignition_score|funding_rate|volume_24h_usd)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+    auth: dict = Depends(verify_api_key),
+):
+    """
+    Scan about 190 Binance USDT perpetuals (24h volume >= $5M) in one call. Every market is refreshed at
+    least every ~2 minutes from 5-minute candles: price change, aggressive buy share, net taker flow in USD,
+    volume surge, funding and ignition score. Rankings of current conditions, not predictions.
+    Free plan: first 3 results. Paid plans: up to 100.
+    """
+    cov = market_scanner.coverage()
+    if not cov["with_candles"]:
+        raise HTTPException(status_code=503, detail={"error": "data_unavailable", "message": "Scanner is warming up. Retry in a minute."})
+    filters = dict(min_taker_buy_ratio=min_taker_buy_ratio, max_taker_buy_ratio=max_taker_buy_ratio, min_volume_surge=min_volume_surge,
+                   min_ignition=min_ignition, min_change_15m=min_change_15m, max_change_15m=max_change_15m, min_abs_funding=min_abs_funding)
+    free = tier_level(auth.get("tier")) == 0
+    cap = min(limit, FREE_SCAN_ROWS) if free else limit
+    rows = market_scanner.run_query(market_scanner._state["rows"], None if preset == "custom" else preset, cap,
+                                    min_volume_24h, filters, sort_by, order == "desc")
+    results = [market_scanner.public_row(r) for r in rows]
+
+    # attach Horus live order flow (with its measured hit rate) where Horus tracks the pair
+    from app.feeds.binance_ws import ws_manager
+    from app.routes.flow import build_flow_response
+    for r in results:
+        if r["symbol"] in ws_manager.symbols:
+            try:
+                f = await build_flow_response(r["symbol"], update_oscillation=False)
+                rel = f.get("reliability") or {}
+                r["horus_flow"] = {"signal": f["signal"], "direction_bias": f["direction_bias"],
+                                   "hit_rate_5m": (rel.get("hit_rate") or {}).get("5m")}
+            except HTTPException:
+                pass
+
+    out = {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "preset": preset,
+        "criteria": market_scanner.PRESETS[preset]["description"] if preset != "custom" else
+                    {k: v for k, v in filters.items() if v is not None} | {"sort_by": sort_by, "order": order},
+        "coverage": cov,
+        "count": len(results),
+        "results": results,
+        "fields": {
+            "taker_buy_ratio_15m": "share of traded notional bought by aggressive buyers over 15 minutes (0.5 = balanced)",
+            "net_taker_flow_15m_usd": "aggressive buys minus aggressive sells over 15 minutes, USD",
+            "volume_surge": "average 5-minute volume of the last 15 minutes / the 45 minutes before",
+            "funding_rate": "per 8 hours, Binance perpetual",
+        },
+        "note": "Rankings of current conditions, not predictions. Picks are recorded so their accuracy can be published later.",
+        "data_source": "Binance USDT-margined perpetuals, 5-minute candles",
+    }
+    if free and limit > FREE_SCAN_ROWS:
+        out["upgrade"] = f"The free plan shows the first {FREE_SCAN_ROWS} results. PRO and above return up to 100."
+    return out

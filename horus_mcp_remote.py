@@ -49,6 +49,7 @@ _caller_key: contextvars.ContextVar[str] = contextvars.ContextVar("caller_key", 
 INSTRUCTIONS = """Horus Flow gives you live crypto market microstructure and US equity session context.
 
 How to use it well:
+- To find where to look, call scan_market (about 190 markets ranked by buyers, sellers, volume surge, breakouts).
 - Start with get_market_overview for BTC, ETH and 8 other majors, or get_crypto_flow for one pair.
 - Every directional reading carries `reliability`: its measured hit rate from the live track record.
   Many signals score close to 50%, a coin flip. Treat them as context for your own reasoning, never as
@@ -267,6 +268,19 @@ async def get_ignitions(limit: int = 10, ctx: Context = None) -> dict[str, Any]:
 
 
 @mcp.tool(annotations=RO, structured_output=True)
+async def scan_market(preset: str = "buyers_in_control", limit: int = 10, min_volume_24h_usd: float = 5_000_000,
+                      ctx: Context = None) -> dict[str, Any]:
+    """Scan about 190 Binance perpetual markets in one call and get a ranked list. preset is one of:
+    buyers_in_control, sellers_in_control, volume_surge, breakout_candidates, crowded_funding, top_movers.
+    Each row: price, 15m and 1h change, aggressive buy share, net taker flow in USD, volume surge, funding,
+    ignition score, and Horus live flow with its measured hit rate where Horus tracks the pair.
+    Use it to find where to look before calling get_crypto_flow or get_derivatives on a specific market.
+    Rankings of current conditions, not predictions. Free plan: 3 rows; PRO and above: up to 100."""
+    r = await _get(ctx, "/v1/scan", {"preset": preset, "limit": max(1, min(limit, 50)), "min_volume_24h": min_volume_24h_usd})
+    return {k: r[k] for k in ("preset", "criteria", "coverage", "count", "results", "note", "upgrade") if k in r}
+
+
+@mcp.tool(annotations=RO, structured_output=True)
 async def get_track_record(signal: Optional[str] = None, window: str = "30d", ctx: Context = None) -> dict[str, Any]:
     """Measured hit rates of Horus signals at 1, 5, 15 and 30 minutes (window 30d or all), from every signal
     recorded live since August 2026. Pass a signal name (e.g. STRONG_BUY_PRESSURE) for just that signal.
@@ -350,7 +364,7 @@ INFO = {
         "mcp_json": {"mcpServers": {"horus-flow": {"type": "http", "url": "https://flow.horustek.pro/mcp",
                                                     "headers": {"X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY"}}}},
     },
-    "tools": ["get_crypto_flow", "get_flow_history", "get_market_overview", "get_derivatives", "get_cortex",
+    "tools": ["scan_market", "get_crypto_flow", "get_flow_history", "get_market_overview", "get_derivatives", "get_cortex",
               "get_ignitions", "get_track_record", "get_signal_ledger", "get_recent_events", "get_us_market_session",
               "get_cross_asset", "get_equity_flow", "get_service_status"],
     "docs": "https://flow.horustek.pro/llms.txt",
@@ -386,7 +400,8 @@ Horus keys: <code>X-API-Key: YOUR_KEY</code>. Without a key you get the free tie
     }
   }
 }</code></pre></section>
-<section><h2>13 read-only tools</h2><ul>
+<section><h2>14 read-only tools</h2><ul>
+<li>Market scanner across about 190 perpetual markets</li>
 <li>Crypto order flow, flow history, market overview, derivatives across Binance, Bybit and OKX, Cortex, ignitions</li>
 <li>Track record and point-in-time signal ledger</li>
 <li>Recent events, US market session and halts, cross-asset view, US equity flow, service status</li></ul>

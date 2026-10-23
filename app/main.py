@@ -34,7 +34,7 @@ from app.derivatives_publisher import derivatives_publisher_loop, KEY_COMPOSITE
 from app.history_recorder import history_recorder_loop
 from app.status_monitor import status_monitor_loop, public_status
 from app.routes.agents import router_agents
-from app import events as agent_events, track_record, us_market, rapidapi_stats
+from app import events as agent_events, track_record, us_market, rapidapi_stats, market_scanner
 from app.auth import require_tier
 from fastapi import Depends, Query
 
@@ -54,6 +54,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(derivatives_publisher_loop(redis_manager)),
         asyncio.create_task(track_record.track_record_loop()),
         asyncio.create_task(us_market.halts_loop()),
+        asyncio.create_task(market_scanner.scanner_loop(redis_manager, record_ledger=not TEST_INSTANCE)),
     ]
     if not TEST_INSTANCE:  # these write shared history / uptime samples
         background.append(asyncio.create_task(history_recorder_loop()))

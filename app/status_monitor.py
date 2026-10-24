@@ -7,6 +7,7 @@ uptime figures, serves /v1/status, and sends Telegram alerts on outages.
 import asyncio
 import json
 import logging
+import shutil
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -28,6 +29,9 @@ SAMPLES_RETENTION = 7 * 86400
 ALERT_AFTER_CONSECUTIVE_DOWN = 2
 STARTUP_GRACE_SECONDS = 300  # feeds warm up after a restart; no alerts before this
 ALERTED_KEY = "horus:api:status:alerted"  # name -> epoch of the DOWN alert; survives restarts
+# The trading platform's Sniper witness stops opening raw ledgers under 8 GB free disk, silently.
+DISK_ALERT_GB = 12.0
+DISK_RECOVER_GB = 14.0
 
 COMPONENTS: List[Dict[str, Any]] = [
     {"name": "binance_spot_stream", "label": "Binance spot order book and trades", "max_age": 30,
@@ -213,6 +217,25 @@ async def _alerts(sample: Dict[str, Dict[str, Any]]):
                 await _send_telegram(f"Horus Flow API: {labels[name]} recovered.")
 
 
+def free_disk_gb(path: str = "/") -> float:
+    return shutil.disk_usage(path).free / 1e9
+
+
+async def _disk_alert(free_gb: float):
+    """One message when free disk falls under DISK_ALERT_GB, one when it is back over DISK_RECOVER_GB."""
+    r = redis_manager.redis
+    if not r:
+        return
+    alerted = await r.hget(ALERTED_KEY, "disk_space")
+    if free_gb < DISK_ALERT_GB and not alerted:
+        await r.hset(ALERTED_KEY, "disk_space", str(int(time.time())))
+        await _send_telegram(f"تنبيه: المساحة الفاضية على الخادم {free_gb:.1f} جيجا. "
+                             f"شاهد الـ Sniper يتوقف عن فتح سجلات جديدة تحت 8 جيجا.")
+    elif free_gb > DISK_RECOVER_GB and alerted:
+        await r.hdel(ALERTED_KEY, "disk_space")
+        await _send_telegram(f"المساحة الفاضية على الخادم رجعت {free_gb:.1f} جيجا.")
+
+
 async def status_monitor_loop():
     await asyncio.sleep(30)
     while True:
@@ -222,6 +245,7 @@ async def status_monitor_loop():
             _latest.update(sample)
             await _record(sample)
             await _alerts(sample)
+            await _disk_alert(free_disk_gb())
             await _daily_rapidapi_report()
         except asyncio.CancelledError:
             raise
@@ -257,6 +281,7 @@ async def _daily_rapidapi_report():
         text += f"\n\nأرشيف البيانات على السحابة: {rem['hours']} ساعة، {rem['mb']} ميجا، منذ {rem['first_day']}"
     if loc["hours"]:
         text += f"\nعلى الخادم: آخر {loc['days']} يوم ({loc['mb']} ميجا)"
+    text += f"\nالمساحة الفاضية على الخادم: {free_disk_gb():.1f} جيجا"
     await _send_telegram(text)
 
 

@@ -11,6 +11,11 @@ so a restart rewrites an hour instead of duplicating it.
 Each file is then copied to Backblaze B2 (flow_history/YYYY-MM-DD/HH.jsonl.gz) and marked
 with an empty HH.jsonl.gz.up next to it. The server keeps LOCAL_KEEP_DAYS of copied files;
 files that were never copied are never deleted.
+
+The same loop looks after qve_engine's market-intelligence snapshots (one uncompressed file
+per local day since May 2026): closed days are gzipped (verified byte for byte, then the
+original goes; about 27x smaller) and copied to B2 under raw_snapshots/. They stay on the
+server too, because optimize_weights.py reads them.
 """
 import asyncio
 import base64
@@ -19,6 +24,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -36,6 +42,7 @@ CHECK_INTERVAL = 300
 KEY_LAST_HOUR = "horus:api:archive:last_hour"  # epoch of the start of the last archived hour
 KEY_REMOTE = "horus:api:archive:remote"  # hash: hours, bytes, first_day copied to B2
 LOCAL_KEEP_DAYS = 7
+SNAPSHOT_DIR = Path(os.getenv("HORUS_SNAPSHOT_DIR", "calibration_data/raw_snapshots"))
 B2_API = "https://api.backblazeb2.com/b2api/v2"
 
 
@@ -111,17 +118,54 @@ class B2Client:
         raise RuntimeError("B2 authorization failed twice")
 
 
+async def _copy(client, session, path: Path, name: str) -> int:
+    data = await asyncio.to_thread(path.read_bytes)
+    await client.upload(session, name, data)
+    _marker(path).touch()
+    return len(data)
+
+
 async def upload_pending(client, redis, session: aiohttp.ClientSession) -> int:
     """Copy every archived hour without a .up marker, oldest first. Returns how many were copied."""
     done = 0
     for path in sorted(p for p in ARCHIVE_DIR.glob("*/*.jsonl.gz") if not _marker(p).exists()):
-        data = await asyncio.to_thread(path.read_bytes)
-        await client.upload(session, f"flow_history/{path.parent.name}/{path.name}", data)
-        _marker(path).touch()
+        size = await _copy(client, session, path, f"flow_history/{path.parent.name}/{path.name}")
         await redis.hincrby(KEY_REMOTE, "hours", 1)
-        await redis.hincrby(KEY_REMOTE, "bytes", len(data))
+        await redis.hincrby(KEY_REMOTE, "bytes", size)
         if not await redis.hget(KEY_REMOTE, "first_day"):
             await redis.hset(KEY_REMOTE, "first_day", path.parent.name)
+        done += 1
+    return done
+
+
+def compress_closed_snapshots(now: float = None) -> int:
+    """gzip every snapshot day before today (qve_engine names files by the server's local date)."""
+    today = datetime.fromtimestamp(now or time.time()).strftime("%Y-%m-%d")
+    done = 0
+    for path in sorted(SNAPSHOT_DIR.glob("snapshots_*.jsonl")):
+        if path.stem.removeprefix("snapshots_") >= today:
+            continue
+        gz = path.with_name(path.name + ".gz")
+        tmp = path.with_name(path.name + ".gz.tmp")
+        with open(path, "rb") as src, gzip.open(tmp, "wb", compresslevel=6) as dst:
+            shutil.copyfileobj(src, dst, 1 << 20)
+        size = 0
+        with gzip.open(tmp, "rb") as f:
+            while chunk := f.read(1 << 20):
+                size += len(chunk)
+        if size != path.stat().st_size:
+            tmp.unlink()
+            raise RuntimeError(f"{path.name}: compressed copy does not match, original kept")
+        os.replace(tmp, gz)
+        path.unlink()
+        done += 1
+    return done
+
+
+async def upload_snapshots(client, session: aiohttp.ClientSession) -> int:
+    done = 0
+    for path in sorted(p for p in SNAPSHOT_DIR.glob("snapshots_*.jsonl.gz") if not _marker(p).exists()):
+        await _copy(client, session, path, f"raw_snapshots/{path.name}")
         done += 1
     return done
 
@@ -169,11 +213,16 @@ async def archiver_loop():
                     n = await archive_hour(r, hour)
                     await r.set(KEY_LAST_HOUR, hour)
                     logger.info(f"archived {n} snapshots to {hour_path(hour)}")
+                if not TEST_INSTANCE:
+                    zipped = await asyncio.to_thread(compress_closed_snapshots)
+                    if zipped:
+                        logger.info(f"gzipped {zipped} closed snapshot days in {SNAPSHOT_DIR}")
                 if b2:
-                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as s:
+                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as s:
                         copied = await upload_pending(b2, r, s)
-                    if copied:
-                        logger.info(f"copied {copied} archive files to B2 bucket {B2_BUCKET}")
+                        snaps = await upload_snapshots(b2, s)
+                    if copied or snaps:
+                        logger.info(f"copied {copied} archive hours and {snaps} snapshot days to B2 bucket {B2_BUCKET}")
                     await asyncio.to_thread(prune_local)
         except asyncio.CancelledError:
             raise

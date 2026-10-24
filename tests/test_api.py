@@ -965,3 +965,27 @@ def test_archive_upload_marks_and_prunes(fresh_state, tmp_path, monkeypatch):
     assert ha.prune_local(now) == 1 and not (tmp_path / "2026-10-01").exists()
     s = asyncio.run(ha.archive_summary(fresh_state))
     assert s["remote"] == {"hours": 3, "mb": 0.0, "first_day": "2026-10-01"} and s["local"]["hours"] == 1
+
+
+def test_closed_snapshot_days_are_gzipped(tmp_path, monkeypatch):
+    import gzip
+    monkeypatch.setattr(ha, "SNAPSHOT_DIR", tmp_path)
+    body = "".join(json.dumps({"ts": i, "data": {"x": i}}) + "\n" for i in range(500))
+    for day in ("2026-10-22", "2026-10-24"):
+        (tmp_path / f"snapshots_{day}.jsonl").write_text(body)
+    now = time.mktime((2026, 10, 24, 12, 0, 0, 0, 0, -1))  # local time, like qve_engine's file names
+    assert ha.compress_closed_snapshots(now) == 1
+    assert not (tmp_path / "snapshots_2026-10-22.jsonl").exists()
+    assert gzip.open(tmp_path / "snapshots_2026-10-22.jsonl.gz", "rt").read() == body
+    assert (tmp_path / "snapshots_2026-10-24.jsonl").exists()  # today is still being written
+
+
+def test_disk_alert_once_and_recovery(fresh_state, monkeypatch):
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+    monkeypatch.setattr(sm, "_send_telegram", fake_send)
+    for gb in (20.0, 11.5, 10.0, 13.0, 15.0, 15.0):
+        asyncio.run(sm._disk_alert(gb))
+    assert len(sent) == 2 and "11.5" in sent[0] and "15.0" in sent[1]  # one warning, no repeat, one recovery

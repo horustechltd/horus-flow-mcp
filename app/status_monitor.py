@@ -246,8 +246,8 @@ async def _daily_rapidapi_report():
         return  # already sent
     summary = await rapidapi_stats.day_summary(redis_manager.redis, yesterday)
     text = rapidapi_stats.telegram_text(summary)
-    labels = {c["name"]: c["label"] for c in COMPONENTS}
-    down = [labels[n] for n, info in _latest.items() if info["status"] == "down"]
+    labels = {c["name"]: c["label"] for c in COMPONENTS if c.get("alert") is not False}
+    down = [labels[n] for n, info in _latest.items() if n in labels and info["status"] == "down"]
     if down:
         text += "\n\nمكونات متوقفة الآن: " + "، ".join(down)
     await _send_telegram(text)

@@ -122,7 +122,7 @@ class FakeRedis:
         return len(self.lists.get(k, []))
 
     async def scan_iter(self, pattern="*", count=None):
-        for k in list(self.kv) + list(self.hashes):
+        for k in list(self.kv) + list(self.hashes) + list(self.zsets):
             if fnmatch.fnmatch(k, pattern):
                 yield k
 
@@ -915,3 +915,24 @@ def test_ops_alerts_quiet_while_warming_up(fresh_state, monkeypatch):
     for _ in range(4):
         asyncio.run(sm._alerts({"market_scanner": {"status": "down", "age_seconds": None}}))
     assert sent == []
+
+
+# ─────────────────────────── history archive ───────────────────────────
+from app import history_archiver as ha  # noqa: E402
+
+
+def test_archive_hour_writes_each_snapshot_once(fresh_state, tmp_path, monkeypatch):
+    import gzip
+    monkeypatch.setattr(ha, "ARCHIVE_DIR", tmp_path)
+    hour = 1792821600  # 2026-10-24 06:00 UTC
+    for sym in ("BTCUSDT", "ETHUSDT"):
+        for i in range(3):
+            ts = hour + i * 15
+            asyncio.run(fresh_state.zadd(f"flow:history:{sym}", {json.dumps({"_ts": ts, "top5_imbalance": 0.1 * i}): ts}))
+    asyncio.run(fresh_state.zadd("flow:history:BTCUSDT", {json.dumps({"_ts": hour + 3600}): hour + 3600}))  # next hour
+    assert asyncio.run(ha.archive_hour(fresh_state, hour)) == 6
+    assert asyncio.run(ha.archive_hour(fresh_state, hour)) == 6  # a rerun rewrites, never appends
+    path = tmp_path / "2026-10-24" / "06.jsonl.gz"
+    rows = [json.loads(l) for l in gzip.open(path, "rt")]
+    assert len(rows) == 6 and {r["symbol"] for r in rows} == {"BTCUSDT", "ETHUSDT"}
+    assert ha.archive_stats() == {"days": 1, "hours": 1, "mb": 0.0, "first_day": "2026-10-24"}

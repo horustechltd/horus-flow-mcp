@@ -43,7 +43,7 @@ RATE_LIMITS = {
 DEMO_DAILY_LIMIT_PER_IP = 500
 
 # Symbols available on the free/demo tiers (other USDT pairs need a paid plan)
-FREE_TIER_SYMBOLS = {"BTCUSDT", "ETHUSDT"}
+FREE_TIER_SYMBOLS: set = set()  # empty = every pair is open on free plans (owner decision 2026-10-24)
 
 # Max number of crypto symbols tracked live at once (protects the WS connection)
 MAX_TRACKED_CRYPTO_SYMBOLS = 80

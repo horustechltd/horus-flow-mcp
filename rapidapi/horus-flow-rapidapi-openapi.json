@@ -3,7 +3,7 @@
   "info": {
     "title": "Horus Flow Intelligence",
     "version": "3.1.0",
-    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) BTCUSDT and ETHUSDT flow, track record, US session. PRO adds every pair, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
+    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) order flow for any pair, track record, US session, first 3 scanner results. PRO adds the full scanner, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
     "contact": {
       "name": "Horus Tech Ltd",
       "email": "admin@horustek.pro",
@@ -53,7 +53,7 @@
           "Crypto Order Flow"
         ],
         "summary": "Live order flow for a pair",
-        "description": "Order book imbalance (top 20 levels) and aggressive trade flow for any TRADING Binance spot pair: 5s and 30s buy/sell delta in USD, depth ratio, large sells in the last 5 minutes (threshold scaled to the pair's 24h volume). Every directional reading carries `reliability`: its measured hit rate at 1/5/15/30 minutes from the live track record. Add `view=compact` for a short answer sized for AI agents. A pair requested for the first time returns 202; retry after 5 seconds.\n\nPlans: BASIC (free) covers BTCUSDT and ETHUSDT; PRO and above cover every Binance spot pair.",
+        "description": "Order book imbalance (top 20 levels) and aggressive trade flow for any TRADING Binance spot pair: 5s and 30s buy/sell delta in USD, depth ratio, large sells in the last 5 minutes (threshold scaled to the pair's 24h volume). Every directional reading carries `reliability`: its measured hit rate at 1/5/15/30 minutes from the live track record. Add `view=compact` for a short answer sized for AI agents. A pair requested for the first time returns 202; retry after 5 seconds.\n\nPlans: all, including BASIC (free), for every Binance spot pair.",
         "operationId": "get_crypto_flow",
         "responses": {
           "200": {

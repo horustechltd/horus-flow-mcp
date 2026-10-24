@@ -5,8 +5,8 @@ Horus Flow — Remote MCP server (Streamable HTTP)
 Endpoint:  https://flow.horustek.pro/mcp
 Auth:      RapidAPI subscribers send `X-RapidAPI-Key: <key>` (calls go through RapidAPI and its plans).
            Horus keys go as `X-API-Key: <key>` or `Authorization: Bearer <key>`.
-           Without a key the server answers on the free tier (BTCUSDT and ETHUSDT flow,
-           public track record, US session context).
+           Without a key the server answers on the free tier (order flow for any pair,
+           public track record, US session context, first 3 scanner results).
 
 Every tool is read-only and proxies the local Horus Flow API with the caller's key,
 so plans and rate limits apply per caller. Outputs are compact JSON built for LLM

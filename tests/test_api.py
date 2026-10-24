@@ -257,8 +257,7 @@ def test_old_public_literals_rejected():
 def test_free_level_scope(key, fresh_state):
     put_fresh_upstream(fresh_state)
     assert get("/v1/flow/crypto/BTCUSDT", key).status_code == 200
-    r = get("/v1/flow/crypto/SOLUSDT", key)
-    assert r.status_code == 403 and r.json()["detail"]["error"] == "upgrade_required"
+    assert get("/v1/flow/crypto/SOLUSDT", key).status_code == 200  # every pair is open on free plans
     assert get("/v1/intelligence/cortex", key).status_code == 403
     assert get("/v1/intelligence/climate", key).status_code == 403
     assert get("/v1/flow/equity/macro-blocks", key).status_code == 200
@@ -287,7 +286,8 @@ def test_rapidapi_plan_mapping(fresh_state):
     put_fresh_upstream(fresh_state)
     h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "u1"}
     basic = client.get("/v1/flow/crypto/SOLUSDT", headers={**h, "X-RapidAPI-Subscription": "BASIC"})
-    assert basic.status_code == 403
+    assert basic.status_code == 200
+    assert client.get("/v1/intelligence/climate", headers={**h, "X-RapidAPI-Subscription": "BASIC"}).status_code == 403
     pro = client.get("/v1/flow/crypto/SOLUSDT", headers={**h, "X-RapidAPI-Subscription": "PRO"})
     assert pro.status_code == 200
     assert client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": "PRO"}).status_code == 403
@@ -740,15 +740,15 @@ from app import rapidapi_stats  # noqa: E402
 def test_rapidapi_usage_is_counted(fresh_state):
     h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "alice", "X-RapidAPI-Subscription": "BASIC"}
     assert client.get("/v1/flow/crypto/BTCUSDT", headers=h).status_code == 200
-    assert client.get("/v1/flow/crypto/SOLUSDT", headers=h).status_code == 403
+    assert client.get("/v1/intelligence/climate", headers=h).status_code == 403
     client.get("/v1/flow/crypto/BTCUSDT", headers={**h, "X-RapidAPI-User": "bob", "X-RapidAPI-Subscription": "PRO"})
     client.get("/v1/flow/crypto/BTCUSDT", headers={"X-API-Key": KEYS["admin"]})  # not RapidAPI: not counted
     s = asyncio.run(rapidapi_stats.summary(fresh_state, 1))[0]
     assert s["requests"] == 3
     assert s["requests_by_plan"] == {"BASIC": 2, "PRO": 1}
     assert s["unique_subscribers_by_plan"] == {"BASIC": 1, "PRO": 1}
-    assert s["denied"] == {"BASIC /v1/flow/crypto/{symbol} 403": 1}
-    assert s["top_endpoints"] == {"/v1/flow/crypto/{symbol}": 3}
+    assert s["denied"] == {"BASIC /v1/intelligence/climate 403": 1}
+    assert s["top_endpoints"] == {"/v1/flow/crypto/{symbol}": 2, "/v1/intelligence/climate": 1}
     assert "testserver" in s["hosts"]
     text = rapidapi_stats.telegram_text(s)
     assert "إجمالي الطلبات: 3" in text and "BASIC" in text and "رُفضت" in text

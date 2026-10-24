@@ -25,7 +25,7 @@
 - Full numbers: https://flow.horustek.pro/v1/track-record ; per-signal ledger for backtests: /v1/track-record/signals
 
 ## Free tier
-BTCUSDT and ETHUSDT flow, track record, US session and halts, service status.
+Order flow for any Binance spot pair, track record, US session and halts, first 3 scanner results, service status.
 
 ## Not financial advice
 Horus Flow provides market data and measured statistics. It does not manage money or give personalized advice.

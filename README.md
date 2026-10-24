@@ -154,7 +154,7 @@ graph TD
 ### Level 1-2: Orderflow Microstructure
 | Endpoint | Method | Description | Tier |
 |:---|:---|:---|:---|
-| `/v1/flow/crypto/{symbol}` | `GET` | Order book imbalance (top 20 levels) and taker flow from Binance's public stream. Any TRADING spot pair | Free: BTCUSDT, ETHUSDT · Builder: all pairs |
+| `/v1/flow/crypto/{symbol}` | `GET` | Order book imbalance (top 20 levels) and taker flow from Binance's public stream. Any TRADING spot pair | Free: all pairs |
 | `/v1/flow/crypto/{symbol}/history` | `GET` | Snapshots every 15s with price, deltas and ratios | Builder: 60 min · Pro: 24 h |
 | `/v1/flow/equity/{symbol}` | `GET` | US equity flow from the IEX feed (about 3% of US volume, a sample) | Builder |
 | `/v1/flow/equity/macro-blocks` | `GET` | SPY buy/sell skew and IEX prints of $200k or more | Free |
@@ -205,7 +205,7 @@ Every directional flow reading carries a `reliability` block with its measured h
 
 - **RapidAPI subscribers:** send your RapidAPI key as `X-RapidAPI-Key: <key>`. Calls go through RapidAPI, so your RapidAPI plan and quota apply. [Subscribe on RapidAPI](https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence).
 - **Horus keys:** `X-API-Key: <key>` or `Authorization: Bearer <key>`.
-- **No key:** free tier: BTCUSDT and ETHUSDT flow, the public track record, US session context and service status.
+- **No key:** free tier: order flow for any pair, the public track record, US session context, the first 3 scanner results and service status.
 
 Claude Code:
 ```bash
@@ -229,7 +229,7 @@ Any MCP client that supports remote servers:
 | Tool | What it answers | Plan |
 |:---|:---|:---|
 | `scan_market` | Where are buyers, sellers or volume surging across about 250 markets right now | Free (3 rows) / Builder |
-| `get_crypto_flow` | Live order flow for one pair, with the signal's measured hit rate | Free (BTC, ETH) / Builder |
+| `get_crypto_flow` | Live order flow for one pair, with the signal's measured hit rate | Free |
 | `get_flow_history` | Is pressure building or fading over the last hour | Builder |
 | `get_market_overview` | Climate, Cortex and 10 majors in one call | Pro |
 | `get_derivatives` | Funding, OI across Binance/Bybit/OKX, crowd positioning, liquidation levels | Pro |
@@ -292,7 +292,7 @@ else:
 
 | Feature | Free | Builder / Trader ($29/mo) | Pro ($149/mo) | Institutional ($499/mo) |
 |:---|:---:|:---:|:---:|:---:|
-| Crypto order flow | BTCUSDT, ETHUSDT | Any Binance spot pair | Any Binance spot pair | Any Binance spot pair |
+| Crypto order flow | Any Binance spot pair | Any Binance spot pair | Any Binance spot pair | Any Binance spot pair |
 | Flow history | – | 60 minutes | 24 hours | 24 hours |
 | Track record and US session context | ✅ | ✅ | ✅ | ✅ |
 | Climate, ignitions, cross-asset, US equities (IEX sample) | – | ✅ | ✅ | ✅ |

@@ -46,7 +46,7 @@ async def get_flow_signal(symbol: str,
                           auth: dict = Depends(verify_api_key)):
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
 
-    if tier_level(auth.get("tier")) == 0 and clean_symbol not in FREE_TIER_SYMBOLS:
+    if FREE_TIER_SYMBOLS and tier_level(auth.get("tier")) == 0 and clean_symbol not in FREE_TIER_SYMBOLS:
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required", "required_plan": "BUILDER",
             "message": f"The free plan covers {', '.join(sorted(FREE_TIER_SYMBOLS))}. Other pairs need the BUILDER plan or higher.",

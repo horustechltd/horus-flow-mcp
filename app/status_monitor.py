@@ -26,7 +26,8 @@ CHECK_INTERVAL = 60
 SAMPLES_KEY = "horus:api:status:samples"
 SAMPLES_RETENTION = 7 * 86400
 ALERT_AFTER_CONSECUTIVE_DOWN = 2
-ALERT_REPEAT_SECONDS = 1800
+STARTUP_GRACE_SECONDS = 300  # feeds warm up after a restart; no alerts before this
+ALERTED_KEY = "horus:api:status:alerted"  # name -> epoch of the DOWN alert; survives restarts
 
 COMPONENTS: List[Dict[str, Any]] = [
     {"name": "binance_spot_stream", "label": "Binance spot order book and trades", "max_age": 30,
@@ -40,7 +41,7 @@ COMPONENTS: List[Dict[str, Any]] = [
      "endpoints": ["/v1/intelligence/ignitions"]},
     {"name": "cortex", "label": "Horus Cortex", "max_age": 600,
      "endpoints": ["/v1/intelligence/cortex"]},
-    {"name": "incubator", "label": "Behavioral Court / Incubator", "max_age": None,
+    {"name": "incubator", "label": "Behavioral Court / Incubator", "max_age": None, "alert": False,
      "endpoints": ["/v1/intelligence/verdict/{symbol}", "/v1/intelligence/incubator"]},
     {"name": "alpaca_iex_stream", "label": "US equities (IEX sample via Alpaca)", "max_age": 120,
      "endpoints": ["/v1/flow/equity/{symbol}", "/v1/flow/equity/macro-blocks", "/v1/cross-asset"]},
@@ -56,8 +57,7 @@ COMPONENTS: List[Dict[str, Any]] = [
 
 _latest: Dict[str, Dict[str, Any]] = {}
 _down_streak: Dict[str, int] = {}
-_last_alert: Dict[str, float] = {}
-_alerted_down: Dict[str, bool] = {}
+_started_at = time.time()
 
 
 def _ts_of(doc: Optional[Dict[str, Any]]) -> Optional[float]:
@@ -177,30 +177,40 @@ async def _send_telegram(text: str):
         return
     try:
         async with aiohttp.ClientSession() as s:
-            await s.post(f"https://api.telegram.org/bot{OPS_TELEGRAM_TOKEN}/sendMessage",
-                         json={"chat_id": OPS_TELEGRAM_CHAT_ID, "text": text},
-                         timeout=aiohttp.ClientTimeout(total=10))
+            async with s.post(f"https://api.telegram.org/bot{OPS_TELEGRAM_TOKEN}/sendMessage",
+                              json={"chat_id": OPS_TELEGRAM_CHAT_ID, "text": text},
+                              timeout=aiohttp.ClientTimeout(total=10)) as r:
+                if r.status != 200:
+                    logger.error(f"ops alert rejected: HTTP {r.status} {(await r.text())[:200]}")
     except Exception as e:
-        logger.error(f"ops alert failed: {e}")
+        logger.error(f"ops alert failed: {e!r}")
 
 
 async def _alerts(sample: Dict[str, Dict[str, Any]]):
-    now = time.time()
+    """One message when a component goes down and one when it recovers; never repeated.
+    The alerted set lives in Redis so a restart neither re-sends nor forgets it."""
+    r = redis_manager.redis
+    if not r:
+        return
+    in_grace = time.time() - _started_at < STARTUP_GRACE_SECONDS
     labels = {c["name"]: c["label"] for c in COMPONENTS}
+    silent = {c["name"] for c in COMPONENTS if c.get("alert") is False}
     for name, info in sample.items():
+        if name in silent:
+            continue
         if info["status"] == "down":
             _down_streak[name] = _down_streak.get(name, 0) + 1
-            if _down_streak[name] >= ALERT_AFTER_CONSECUTIVE_DOWN and now - _last_alert.get(name, 0) > ALERT_REPEAT_SECONDS:
-                _last_alert[name] = now
-                _alerted_down[name] = True
+            if (not in_grace and _down_streak[name] >= ALERT_AFTER_CONSECUTIVE_DOWN
+                    and not await r.hget(ALERTED_KEY, name)):
+                await r.hset(ALERTED_KEY, name, str(int(time.time())))
                 age = info["age_seconds"]
                 await _send_telegram(f"Horus Flow API: {labels[name]} is DOWN"
                                      + (f" (last update {age}s ago)" if age is not None else "") + ".")
         else:
-            if _alerted_down.get(name):
-                await _send_telegram(f"Horus Flow API: {labels[name]} recovered.")
-            _alerted_down[name] = False
             _down_streak[name] = 0
+            if await r.hget(ALERTED_KEY, name):
+                await r.hdel(ALERTED_KEY, name)
+                await _send_telegram(f"Horus Flow API: {labels[name]} recovered.")
 
 
 async def status_monitor_loop():
@@ -235,7 +245,12 @@ async def _daily_rapidapi_report():
     if not await redis_manager.redis.set(flag, "1", ex=3 * 86400, nx=True):
         return  # already sent
     summary = await rapidapi_stats.day_summary(redis_manager.redis, yesterday)
-    await _send_telegram(rapidapi_stats.telegram_text(summary))
+    text = rapidapi_stats.telegram_text(summary)
+    labels = {c["name"]: c["label"] for c in COMPONENTS}
+    down = [labels[n] for n, info in _latest.items() if info["status"] == "down"]
+    if down:
+        text += "\n\nمكونات متوقفة الآن: " + "، ".join(down)
+    await _send_telegram(text)
 
 
 async def public_status() -> Dict[str, Any]:

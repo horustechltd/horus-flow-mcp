@@ -840,3 +840,41 @@ def test_scan_endpoint_tiers_and_warmup(monkeypatch):
     custom = get("/v1/scan?preset=custom&min_volume_surge=2&sort_by=change_15m_pct&order=asc&limit=2", "builder").json()
     assert custom["count"] == 2 and custom["criteria"]["sort_by"] == "change_15m_pct"
     assert get("/v1/scan?preset=nonsense", "builder").status_code == 422
+
+
+# ─────────────────────────── ops alerts ───────────────────────────
+from app import status_monitor as sm  # noqa: E402
+
+
+def test_ops_alerts_once_and_survive_restart(fresh_state, monkeypatch):
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+    monkeypatch.setattr(sm, "_send_telegram", fake_send)
+    monkeypatch.setattr(sm, "_started_at", time.time() - sm.STARTUP_GRACE_SECONDS - 1)
+    sm._down_streak.clear()
+    down = {"us_halts_feed": {"status": "down", "age_seconds": None},
+            "incubator": {"status": "down", "age_seconds": None}}
+    for _ in range(5):
+        asyncio.run(sm._alerts(down))
+    assert sent == ["Horus Flow API: US trading halts (Nasdaq Trader) is DOWN."]  # once; incubator silent
+    sm._down_streak.clear()  # an API restart forgets memory but not Redis
+    for _ in range(3):
+        asyncio.run(sm._alerts(down))
+    assert len(sent) == 1
+    asyncio.run(sm._alerts({"us_halts_feed": {"status": "ok", "age_seconds": 5}}))
+    assert sent[-1] == "Horus Flow API: US trading halts (Nasdaq Trader) recovered." and len(sent) == 2
+
+
+def test_ops_alerts_quiet_while_warming_up(fresh_state, monkeypatch):
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+    monkeypatch.setattr(sm, "_send_telegram", fake_send)
+    monkeypatch.setattr(sm, "_started_at", time.time())
+    sm._down_streak.clear()
+    for _ in range(4):
+        asyncio.run(sm._alerts({"market_scanner": {"status": "down", "age_seconds": None}}))
+    assert sent == []

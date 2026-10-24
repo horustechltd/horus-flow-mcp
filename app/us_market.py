@@ -195,6 +195,7 @@ async def halts_loop():
                     else:
                         _halts["error"] = f"HTTP {r.status}"
             except Exception as e:
-                _halts["error"] = str(e)[:200]
-                logger.error(f"halts fetch failed: {e}")
-            await asyncio.sleep(60 if phase in ("pre_market", "regular", "after_hours") else 900)
+                _halts["error"] = repr(e)[:200]
+                logger.error(f"halts fetch failed: {e!r}")
+            ok = _halts["error"] is None
+            await asyncio.sleep(60 if phase in ("pre_market", "regular", "after_hours") or not ok else 900)

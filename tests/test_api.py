@@ -936,3 +936,32 @@ def test_archive_hour_writes_each_snapshot_once(fresh_state, tmp_path, monkeypat
     rows = [json.loads(l) for l in gzip.open(path, "rt")]
     assert len(rows) == 6 and {r["symbol"] for r in rows} == {"BTCUSDT", "ETHUSDT"}
     assert ha.archive_stats() == {"days": 1, "hours": 1, "mb": 0.0, "first_day": "2026-10-24"}
+
+
+def test_archive_upload_marks_and_prunes(fresh_state, tmp_path, monkeypatch):
+    monkeypatch.setattr(ha, "ARCHIVE_DIR", tmp_path)
+    for day, hour in (("2026-10-01", "05"), ("2026-10-01", "06"), ("2026-10-23", "05")):
+        (tmp_path / day).mkdir(exist_ok=True)
+        (tmp_path / day / f"{hour}.jsonl.gz").write_bytes(b"x" * 10)
+
+    class FakeB2:
+        def __init__(self, fail_on=None):
+            self.names, self.fail_on = [], fail_on
+
+        async def upload(self, session, name, data):
+            if name == self.fail_on:
+                raise RuntimeError("network down")
+            self.names.append(name)
+
+    flaky = FakeB2(fail_on="flow_history/2026-10-01/06.jsonl.gz")
+    with pytest.raises(RuntimeError):
+        asyncio.run(ha.upload_pending(flaky, fresh_state, None))
+    assert flaky.names == ["flow_history/2026-10-01/05.jsonl.gz"]
+    now = time.mktime((2026, 10, 24, 12, 0, 0, 0, 0, 0))
+    assert ha.prune_local(now) == 1  # only the copied old file goes; the failed one stays
+    assert not (tmp_path / "2026-10-01" / "05.jsonl.gz").exists() and (tmp_path / "2026-10-01" / "06.jsonl.gz").exists()
+    ok = FakeB2()
+    assert asyncio.run(ha.upload_pending(ok, fresh_state, None)) == 2  # retries the failed hour, then the new one
+    assert ha.prune_local(now) == 1 and not (tmp_path / "2026-10-01").exists()
+    s = asyncio.run(ha.archive_summary(fresh_state))
+    assert s["remote"] == {"hours": 3, "mb": 0.0, "first_day": "2026-10-01"} and s["local"]["hours"] == 1

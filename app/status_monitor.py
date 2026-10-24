@@ -250,10 +250,13 @@ async def _daily_rapidapi_report():
     down = [labels[n] for n, info in _latest.items() if n in labels and info["status"] == "down"]
     if down:
         text += "\n\nمكونات متوقفة الآن: " + "، ".join(down)
-    from app.history_archiver import archive_stats
-    a = archive_stats()
-    if a["hours"]:
-        text += f"\n\nأرشيف البيانات: {a['days']} يوم ({a['hours']} ساعة)، {a['mb']} ميجا، منذ {a['first_day']}"
+    from app.history_archiver import archive_summary
+    a = await archive_summary(redis_manager.redis)
+    loc, rem = a["local"], a["remote"]
+    if rem["hours"]:
+        text += f"\n\nأرشيف البيانات على السحابة: {rem['hours']} ساعة، {rem['mb']} ميجا، منذ {rem['first_day']}"
+    if loc["hours"]:
+        text += f"\nعلى الخادم: آخر {loc['days']} يوم ({loc['mb']} ميجا)"
     await _send_telegram(text)
 
 

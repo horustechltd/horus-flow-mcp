@@ -56,6 +56,11 @@ TEST_INSTANCE = os.getenv("HORUS_TEST_INSTANCE", "") == "1"
 OPS_TELEGRAM_TOKEN = os.getenv("OPS_TELEGRAM_TOKEN", os.getenv("TELEGRAM_BOT_TOKEN", ""))
 OPS_TELEGRAM_CHAT_ID = os.getenv("OPS_TELEGRAM_CHAT_ID", "")
 
+# Off-site copy of the flow history archive (Backblaze B2). Uploads run only when all are set.
+B2_KEY_ID = os.getenv("B2_KEY_ID", "")
+B2_APP_KEY = os.getenv("B2_APP_KEY", "")
+B2_BUCKET = os.getenv("B2_BUCKET", "")
+
 # Binance WebSocket
 BINANCE_WS_BASE = "wss://stream.binance.com:9443/ws"
 

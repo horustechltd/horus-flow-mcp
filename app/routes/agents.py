@@ -3,8 +3,8 @@
 Horus Flow API — endpoints built for AI agents.
 
   GET  /v1/track-record                 public   live hit rates of every signal
-  GET  /v1/track-record/signals         BUILDER  point-in-time signal ledger with outcomes
-  GET  /v1/events                       BUILDER  recent events since an id
+  GET  /v1/track-record/signals         BUILDER  point-in-time signal ledger with outcomes (free: last 24h, 20 rows)
+  GET  /v1/events                       BUILDER  recent events since an id (free: 3 events, 15 minutes late)
   GET  /v1/events/stream                BUILDER  Server-Sent Events stream
   POST /v1/webhooks                     PRO      register a signed webhook
   GET  /v1/webhooks                     PRO      list your webhooks
@@ -12,7 +12,9 @@ Horus Flow API — endpoints built for AI agents.
   POST /v1/webhooks/{id}/test           PRO      send a test event
   GET  /v1/equity/session               public   US session phase, holidays, next open/close, active halts
   GET  /v1/equity/halts                 public   all US trading halts published today
-  GET  /v1/cross-asset                  BUILDER  BTC order flow next to US equities flow (IEX sample)
+  GET  /v1/cross-asset                  BUILDER  BTC order flow next to US equities flow (free: SPY and QQQ)
+
+Endpoints marked "free:" serve lower plans a live preview with an "upgrade" block instead of a 403.
 """
 import asyncio
 import json
@@ -25,12 +27,16 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app import events, track_record, us_market, market_scanner
-from app.auth import require_tier, verify_api_key, tier_level
+from app.auth import require_tier, tier_or_preview, upgrade_block, verify_api_key, tier_level
 
 router_agents = APIRouter()
 _streams_per_key: Dict[str, int] = defaultdict(int)
 MAX_STREAMS_PER_KEY = 3
 MAX_STREAMS_TOTAL = 500
+PREVIEW_SIGNAL_ROWS = 20
+PREVIEW_EVENTS = 3
+PREVIEW_EVENT_DELAY_S = 900
+PREVIEW_EQUITIES = ("SPY", "QQQ")
 
 
 def _ts(value: Optional[str], default: float) -> float:
@@ -77,7 +83,7 @@ async def get_signal_ledger(symbol: str = Query("BTCUSDT"),
                             start: Optional[str] = Query(None, description="ISO 8601 or epoch seconds; default 24h ago"),
                             end: Optional[str] = Query(None, description="ISO 8601 or epoch seconds; default now"),
                             limit: int = Query(1000, ge=1, le=5000),
-                            auth: dict = Depends(require_tier("BUILDER"))):
+                            auth: dict = Depends(tier_or_preview("BUILDER"))):
     """What Horus said, when, at what price, and what the market did 1/5/15/30 minutes later. Use it to backtest."""
     sym = symbol.upper()
     if sym not in track_record.TRACKED_SYMBOLS:
@@ -87,10 +93,16 @@ async def get_signal_ledger(symbol: str = Query("BTCUSDT"),
     t0 = _ts(start, t1 - 86400)
     if t1 <= t0 or t1 - t0 > 31 * 86400:
         raise HTTPException(status_code=400, detail={"error": "bad_range", "message": "end must be after start, at most 31 days apart."})
+    if auth["preview"]:
+        t0, t1, limit = now - 86400, now, min(limit, PREVIEW_SIGNAL_ROWS)
     rows = await asyncio.to_thread(track_record.query_signals, sym, t0, t1, limit)
-    return {"symbol": sym, "start_utc": datetime.fromtimestamp(t0, timezone.utc).isoformat(),
-            "end_utc": datetime.fromtimestamp(t1, timezone.utc).isoformat(), "count": len(rows),
-            "truncated": len(rows) >= limit, "method": track_record.METHOD, "signals": rows}
+    out = {"symbol": sym, "start_utc": datetime.fromtimestamp(t0, timezone.utc).isoformat(),
+           "end_utc": datetime.fromtimestamp(t1, timezone.utc).isoformat(), "count": len(rows),
+           "truncated": len(rows) >= limit, "method": track_record.METHOD, "signals": rows}
+    if auth["preview"]:
+        out["upgrade"] = upgrade_block(auth, auth["min_level"], "Any 31-day window since the ledger started, up to 5,000 rows per call",
+                                       f"The first {PREVIEW_SIGNAL_ROWS} signals of the last 24 hours on your plan")
+    return out
 
 
 # ─────────────────────────── events ───────────────────────────
@@ -106,10 +118,17 @@ def _types(param: Optional[str]):
 
 @router_agents.get("/events", tags=["Agents"])
 async def get_events(since_id: int = Query(0, ge=0), types: Optional[str] = Query(None, description="Comma-separated event types"),
-                     limit: int = Query(100, ge=1, le=500), auth: dict = Depends(require_tier("BUILDER"))):
+                     limit: int = Query(100, ge=1, le=500), auth: dict = Depends(tier_or_preview("BUILDER"))):
     """Events newer than since_id, oldest first. Poll with the last id you received."""
-    ev = await events.recent(since_id, _types(types), limit)
-    return {"count": len(ev), "last_id": ev[-1]["id"] if ev else since_id, "event_types": list(events.EVENT_TYPES), "events": ev}
+    if not auth["preview"]:
+        ev = await events.recent(since_id, _types(types), limit)
+        return {"count": len(ev), "last_id": ev[-1]["id"] if ev else since_id, "event_types": list(events.EVENT_TYPES), "events": ev}
+    cutoff = time.time() - PREVIEW_EVENT_DELAY_S
+    ev = [e for e in await events.recent(since_id, _types(types), 500)
+          if datetime.fromisoformat(e["time_utc"]).timestamp() <= cutoff][-min(limit, PREVIEW_EVENTS):]
+    return {"count": len(ev), "last_id": ev[-1]["id"] if ev else since_id, "event_types": list(events.EVENT_TYPES), "events": ev,
+            "upgrade": upgrade_block(auth, auth["min_level"], "Every event as it happens, the live stream (/v1/events/stream) and signed webhooks",
+                                     f"The last {PREVIEW_EVENTS} events, {PREVIEW_EVENT_DELAY_S // 60} minutes late, on your plan")}
 
 
 @router_agents.get("/events/stream", tags=["Agents"])
@@ -226,7 +245,7 @@ def _skew(buy_ratio: Optional[float], trades: int = 10 ** 9, min_trades: int = 0
 
 
 @router_agents.get("/cross-asset", tags=["Agents"])
-async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
+async def cross_asset(auth: dict = Depends(tier_or_preview("BUILDER"))):
     """
     BTC order flow next to US equities: SPY, QQQ, and crypto-linked stocks and ETFs (COIN, MSTR, IBIT).
     When the US market is closed, BTC is the only live risk market and the response says so.
@@ -281,7 +300,7 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
         note = "Crypto-linked equities " + ("confirm BTC flow." if proxies and b in proxies and len(set(proxies)) == 1
                                             else "do not confirm BTC flow." if proxies and b not in proxies
                                             else "show no clear skew.")
-    return {
+    out = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "us_session": {k: sess[k] for k in ("phase", "next_open_et", "next_close_et", "minutes_to_close")},
         "btc": btc, "cortex": cortex, "us_equities": equities,
@@ -290,6 +309,14 @@ async def cross_asset(auth: dict = Depends(require_tier("BUILDER"))):
                     "SELLING <= 40%). Fewer than 50 crypto or 30 equity trades is reported as THIN_SAMPLE."),
         "data_source": {"crypto": "Binance spot public stream", "equities": "IEX via Alpaca, about 3% of US consolidated volume (sample)"},
     }
+    if auth["preview"]:
+        locked = [s for s in equities if s not in PREVIEW_EQUITIES]
+        out["us_equities"] = {s: equities[s] for s in PREVIEW_EQUITIES}
+        out.pop("cortex")
+        out["locked_fields"] = ["cortex"] + [f"us_equities.{s}" for s in locked]
+        out["upgrade"] = upgrade_block(auth, auth["min_level"], f"Cortex state and crypto-linked equities ({', '.join(locked)})",
+                                       f"{' and '.join(PREVIEW_EQUITIES)} only on your plan")
+    return out
 
 
 # ─────────────────────────── market scanner ───────────────────────────
@@ -361,5 +388,5 @@ async def scan_market(
         "data_source": "Binance USDT-margined perpetuals, 5-minute candles",
     }
     if free and limit > FREE_SCAN_ROWS:
-        out["upgrade"] = f"The free plan shows the first {FREE_SCAN_ROWS} results. PRO and above return up to 100."
+        out["upgrade"] = upgrade_block(auth, 1, "Up to 100 results per scan", f"The first {FREE_SCAN_ROWS} results on your plan")
     return out

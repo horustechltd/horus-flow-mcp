@@ -136,7 +136,8 @@ async def add_process_time_header(request: Request, call_next):
         try:
             route = getattr(request.scope.get("route"), "path", None) or _route_template(request.url.path)
             await rapidapi_stats.record(redis_manager.redis, rapid["plan"], rapid["user"], route,
-                                        response.status_code, request.headers.get("host", ""))
+                                        response.status_code, request.headers.get("host", ""),
+                                        getattr(request.state, "preview", False))
         except Exception as e:
             logger.error(f"rapidapi stats error: {e}")
 

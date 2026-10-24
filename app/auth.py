@@ -9,7 +9,9 @@ Access levels (one matrix for every channel):
   level 3  INSTITUTIONAL  institutional, mega, RapidAPI MEGA
   level 99 ADMIN     internal services only (never shipped to a browser)
 
-Routes declare the minimum level with require_tier("FREE" | "BUILDER" | "PRO").
+Routes declare the minimum level with require_tier("FREE" | "BUILDER" | "PRO"), or with
+tier_or_preview(...) to give lower plans a reduced live preview instead of a 403.
+Upgrade messages name the plan in the caller's channel (RapidAPI PRO/ULTRA/MEGA or direct plans).
 """
 import ipaddress
 import time
@@ -57,25 +59,68 @@ def tier_level(tier: str) -> int:
     return TIER_LEVELS.get(str(tier or "FREE").upper(), 0)
 
 
+RAPIDAPI_PRICING_URL = "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-default/api/horus-flow-intelligence/pricing"
+SITE_PRICING_URL = "https://flow.horustek.pro/#pricing"
+# Plan names per channel: a RapidAPI subscriber can only buy RapidAPI plans
+PLAN_NAMES = {"rapidapi": {0: "BASIC", 1: "PRO", 2: "ULTRA", 3: "MEGA"},
+              "direct": {0: "FREE", 1: "BUILDER", 2: "PRO", 3: "INSTITUTIONAL"}}
+
+
+def _channel(auth_data: dict) -> str:
+    return "rapidapi" if str(auth_data.get("tier", "")).upper().startswith("RAPIDAPI_") else "direct"
+
+
+def plan_name(auth_data: dict, level: int) -> str:
+    """Name of the plan that gives `level`, in the caller's channel."""
+    return PLAN_NAMES[_channel(auth_data)].get(level, "INSTITUTIONAL")
+
+
+def your_plan(auth_data: dict) -> str:
+    return str(auth_data.get("tier", "FREE")).upper().removeprefix("RAPIDAPI_")
+
+
+def upgrade_block(auth_data: dict, level: int, unlocks: str, limits: Optional[str] = None) -> dict:
+    """What the next plan adds and where to buy it. With `limits`, the response is a preview."""
+    out = {"preview": True, "limits": limits} if limits else {}
+    return out | {
+        "required_plan": plan_name(auth_data, level),
+        "your_plan": your_plan(auth_data),
+        "unlocks": unlocks,
+        "subscribe": RAPIDAPI_PRICING_URL if _channel(auth_data) == "rapidapi" else SITE_PRICING_URL,
+    }
+
+
+def upgrade_required(auth_data: dict, level: int, message: str, unlocks: str = "") -> HTTPException:
+    return HTTPException(status_code=403, detail={"error": "upgrade_required", "message": message}
+                         | upgrade_block(auth_data, level, unlocks or message))
+
+
 def require_tier(min_tier_name: str):
     """FastAPI dependency that blocks callers below the required level."""
     min_level = TIER_LEVELS.get(min_tier_name.upper(), 0)
 
     def tier_dependency(auth_data: dict = Depends(verify_api_key)):
-        user_tier = str(auth_data.get("tier", "FREE")).upper()
-        if tier_level(user_tier) < min_level:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "upgrade_required",
-                    "required_plan": min_tier_name.upper(),
-                    "your_plan": user_tier,
-                    "message": f"This endpoint requires the {min_tier_name.upper()} plan or higher.",
-                },
-            )
+        if tier_level(auth_data.get("tier")) < min_level:
+            plan = plan_name(auth_data, min_level)
+            raise upgrade_required(auth_data, min_level, f"This endpoint needs the {plan} plan or higher.",
+                                   "Access to this endpoint")
         return auth_data
 
     return tier_dependency
+
+
+def tier_or_preview(min_tier_name: str):
+    """Like require_tier, but lower plans get through with auth["preview"] = True: the route serves
+    a small live slice plus an upgrade block instead of a 403, so a trial shows what the plan holds."""
+    min_level = TIER_LEVELS.get(min_tier_name.upper(), 0)
+
+    def preview_dependency(request: Request, auth_data: dict = Depends(verify_api_key)):
+        preview = tier_level(auth_data.get("tier")) < min_level
+        if preview:
+            request.state.preview = True  # counted per plan and endpoint in rapidapi_stats
+        return {**auth_data, "preview": preview, "min_level": min_level}
+
+    return preview_dependency
 
 
 # Cloudflare edge ranges (https://www.cloudflare.com/ips/, checked 2026-10-23)

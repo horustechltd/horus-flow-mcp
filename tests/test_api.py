@@ -258,8 +258,26 @@ def test_free_level_scope(key, fresh_state):
     put_fresh_upstream(fresh_state)
     assert get("/v1/flow/crypto/BTCUSDT", key).status_code == 200
     assert get("/v1/flow/crypto/SOLUSDT", key).status_code == 200  # every pair is open on free plans
-    assert get("/v1/intelligence/cortex", key).status_code == 403
-    assert get("/v1/intelligence/climate", key).status_code == 403
+    assert get("/v1/flow/crypto/SOLUSDT", key).json()["upgrade"]["required_plan"] == "BUILDER"
+    # paid endpoints answer lower plans with a live preview, not a 403
+    c = get("/v1/intelligence/cortex", key)
+    assert c.status_code == 200 and c.json()["upgrade"]["preview"] is True and c.json()["upgrade"]["required_plan"] == "PRO"
+    assert "action_policy" not in c.json() and "action_policy" in c.json()["locked_fields"]
+    assert c.json()["regime_state"] == "HEALTHY_CONSOLIDATION" and "headline_en" in c.json()["narrative"]
+    cl = get("/v1/intelligence/climate", key).json()
+    assert cl["market_mode"] == "CHOP" and "reasoning" not in cl and cl["upgrade"]["required_plan"] == "BUILDER"
+    hm = get("/v1/intelligence/liquidation-heatmap?symbol=ETHUSDT", key)
+    assert hm.status_code == 403 and hm.json()["detail"]["required_plan"] == "PRO"
+    assert "BTCUSDT" in hm.json()["detail"]["message"]
+    wh = get("/v1/webhooks", key)
+    assert wh.status_code == 403 and wh.json()["detail"]["subscribe"].startswith("https://flow.horustek.pro")
+    _put(fresh_state, dp.KEY_COMPOSITE, "BTCUSDT", {"timestamp": time.time(), "composite_score": 50, "verdict": "NEUTRAL"})
+    comp = get("/v1/intelligence/composite", key)
+    assert comp.status_code == 200 and comp.json()["upgrade"]["limits"] == "BTCUSDT only on your plan"
+    mi = get("/v1/intelligence/market-intelligence", key).json()
+    assert set(mi["symbols"]) <= {"BTCUSDT"} and "cortex" in mi["locked_fields"] and "cortex" not in mi
+    eq = get("/v1/flow/equity/AAPL", key)
+    assert eq.status_code == 403 and "SPY and QQQ" in eq.json()["detail"]["message"]
     assert get("/v1/flow/equity/macro-blocks", key).status_code == 200
 
 
@@ -268,8 +286,10 @@ def test_builder_scope(fresh_state):
     assert get("/v1/flow/crypto/SOLUSDT", "builder").status_code == 200
     assert get("/v1/intelligence/climate", "builder").status_code == 200
     assert get("/v1/intelligence/ignitions", "builder").status_code == 200
-    assert get("/v1/intelligence/cortex", "builder").status_code == 403
-    assert get("/v1/flow/crypto/BTCUSDT/history?minutes=120", "builder").status_code == 403
+    cx = get("/v1/intelligence/cortex", "builder").json()
+    assert cx["upgrade"]["required_plan"] == "PRO" and "execution_boundaries" in cx["locked_fields"]
+    assert "upgrade" not in get("/v1/flow/crypto/SOLUSDT", "builder").json()
+    assert "upgrade" not in get("/v1/intelligence/cortex", "pro").json()
 
 
 def test_pro_scope(fresh_state):
@@ -287,12 +307,19 @@ def test_rapidapi_plan_mapping(fresh_state):
     h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "u1"}
     basic = client.get("/v1/flow/crypto/SOLUSDT", headers={**h, "X-RapidAPI-Subscription": "BASIC"})
     assert basic.status_code == 200
-    assert client.get("/v1/intelligence/climate", headers={**h, "X-RapidAPI-Subscription": "BASIC"}).status_code == 403
+    # RapidAPI subscribers are told RapidAPI plan names and the RapidAPI pricing page
+    cl = client.get("/v1/intelligence/climate", headers={**h, "X-RapidAPI-Subscription": "BASIC"}).json()
+    assert cl["upgrade"]["required_plan"] == "PRO" and cl["upgrade"]["your_plan"] == "BASIC"
+    assert cl["upgrade"]["subscribe"].startswith("https://rapidapi.com/")
     pro = client.get("/v1/flow/crypto/SOLUSDT", headers={**h, "X-RapidAPI-Subscription": "PRO"})
-    assert pro.status_code == 200
-    assert client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": "PRO"}).status_code == 403
-    assert client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": "ULTRA"}).status_code == 200
-    assert client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": "MEGA"}).status_code == 200
+    assert pro.status_code == 200 and "upgrade" not in pro.json()
+    cx = client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": "PRO"}).json()
+    assert cx["upgrade"]["required_plan"] == "ULTRA" and cx["upgrade"]["your_plan"] == "PRO"
+    wh = client.get("/v1/webhooks", headers={**h, "X-RapidAPI-Subscription": "BASIC"}).json()["detail"]
+    assert wh["required_plan"] == "ULTRA" and wh["your_plan"] == "BASIC" and "ULTRA plan" in wh["message"]
+    for plan in ("ULTRA", "MEGA"):
+        full = client.get("/v1/intelligence/cortex", headers={**h, "X-RapidAPI-Subscription": plan})
+        assert full.status_code == 200 and "upgrade" not in full.json() and "action_policy" in full.json()
 
 
 def test_demo_rate_limit_per_ip():
@@ -407,8 +434,12 @@ def test_history_has_numbers_and_tier_windows(fresh_state):
 
     asyncio.run(snap())
     r = get("/v1/flow/crypto/BTCUSDT/history?minutes=60", "builder")
-    assert r.status_code == 200 and r.json()["history"][0]["price"] == 100.0
+    assert r.status_code == 200 and r.json()["history"][0]["price"] == 100.0 and "upgrade" not in r.json()
     assert get("/v1/flow/crypto/BTCUSDT/history?minutes=1440", "pro").status_code == 200
+    free = get("/v1/flow/crypto/BTCUSDT/history?minutes=60", "free").json()
+    assert free["minutes"] == 15 and free["snapshots"] == 1 and free["upgrade"]["preview"] is True
+    over = get("/v1/flow/crypto/BTCUSDT/history?minutes=120", "builder").json()
+    assert over["minutes"] == 60 and over["upgrade"]["required_plan"] == "PRO"
 
 
 # ─────────────────────────── Freshness guards ───────────────────────────
@@ -588,7 +619,8 @@ def test_reliability_text_is_honest(ledger):
 def test_track_record_public_and_ledger_tiers(ledger):
     pub = client.get("/v1/track-record")
     assert pub.status_code == 200 and pub.json()["coin_flip"] == 0.5 and "method" in pub.json()
-    assert get("/v1/track-record/signals?symbol=BTCUSDT", "free").status_code == 403
+    free = get("/v1/track-record/signals?symbol=BTCUSDT&start=2026-01-01&end=2026-01-20", "free").json()
+    assert 0 < free["count"] <= 20 and free["upgrade"]["preview"] is True  # last 24h whatever the range asked
     r = get("/v1/track-record/signals?symbol=BTCUSDT", "builder")
     assert r.status_code == 200 and r.json()["count"] > 0 and set(r.json()["signals"][0]["move_pct"]) == {"1m", "5m", "15m", "30m"}
     assert get("/v1/track-record/signals?symbol=BTCUSDT&start=2026-01-01&end=2026-03-01", "builder").status_code == 400
@@ -618,7 +650,8 @@ def test_detector_first_tick_silent_then_emits(fresh_state):
     assert out[0]["data"] == {"from": "HEALTHY_CONSOLIDATION", "to": "RISK_OFF", "trust_score": 45.2}
     r = get("/v1/events?since_id=0", "builder").json()
     assert r["count"] == 1 and r["last_id"] == out[0]["id"]
-    assert get("/v1/events", "free").status_code == 403
+    late = get("/v1/events", "free").json()
+    assert late["count"] == 0 and late["upgrade"]["preview"] is True  # the event is fresh: free sees it 15 min late
     assert get("/v1/events/stream", "free").status_code == 403
     assert get("/v1/events?types=bogus", "builder").status_code == 400
 
@@ -676,7 +709,8 @@ def test_us_calendar_edges():
 
 
 def test_cross_asset(monkeypatch):
-    assert get("/v1/cross-asset", "free").status_code == 403
+    free = get("/v1/cross-asset", "free").json()
+    assert set(free["us_equities"]) == {"SPY", "QQQ"} and "cortex" not in free and free["upgrade"]["preview"] is True
     monkeypatch.setattr(us_market, "session", lambda now=None: {"phase": "closed_weekend", "next_open_et": "2026-10-26T09:30-04:00",
                                                                   "next_close_et": "x", "minutes_to_close": None})
     closed = get("/v1/cross-asset", "builder").json()
@@ -739,19 +773,22 @@ from app import rapidapi_stats  # noqa: E402
 
 def test_rapidapi_usage_is_counted(fresh_state):
     h = {"X-RapidAPI-Proxy-Secret": "test-proxy-secret", "X-RapidAPI-User": "alice", "X-RapidAPI-Subscription": "BASIC"}
+    put_fresh_upstream(fresh_state)
     assert client.get("/v1/flow/crypto/BTCUSDT", headers=h).status_code == 200
-    assert client.get("/v1/intelligence/climate", headers=h).status_code == 403
+    assert client.get("/v1/intelligence/climate", headers=h).status_code == 200  # preview
+    assert client.get("/v1/webhooks", headers=h).status_code == 403
     client.get("/v1/flow/crypto/BTCUSDT", headers={**h, "X-RapidAPI-User": "bob", "X-RapidAPI-Subscription": "PRO"})
     client.get("/v1/flow/crypto/BTCUSDT", headers={"X-API-Key": KEYS["admin"]})  # not RapidAPI: not counted
     s = asyncio.run(rapidapi_stats.summary(fresh_state, 1))[0]
-    assert s["requests"] == 3
-    assert s["requests_by_plan"] == {"BASIC": 2, "PRO": 1}
+    assert s["requests"] == 4
+    assert s["requests_by_plan"] == {"BASIC": 3, "PRO": 1}
     assert s["unique_subscribers_by_plan"] == {"BASIC": 1, "PRO": 1}
-    assert s["denied"] == {"BASIC /v1/intelligence/climate 403": 1}
-    assert s["top_endpoints"] == {"/v1/flow/crypto/{symbol}": 2, "/v1/intelligence/climate": 1}
+    assert s["denied"] == {"BASIC /v1/webhooks 403": 1}
+    assert s["previews"] == {"BASIC /v1/intelligence/climate": 1}
+    assert s["top_endpoints"] == {"/v1/flow/crypto/{symbol}": 2, "/v1/intelligence/climate": 1, "/v1/webhooks": 1}
     assert "testserver" in s["hosts"]
     text = rapidapi_stats.telegram_text(s)
-    assert "إجمالي الطلبات: 3" in text and "BASIC" in text and "رُفضت" in text
+    assert "إجمالي الطلبات: 4" in text and "BASIC" in text and "رُفضت" in text and "معاينات" in text
 
 
 def test_rapidapi_usage_endpoint_is_admin_only(fresh_state):

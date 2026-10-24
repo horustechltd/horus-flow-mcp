@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.auth import verify_api_key, require_tier, tier_level
+from app.auth import verify_api_key, tier_or_preview, tier_level, plan_name, upgrade_block, upgrade_required
 from app.config import FREE_TIER_SYMBOLS
 from app import track_record
 
@@ -37,6 +37,14 @@ from app.feeds.binance_ws import ws_manager
 from app.redis_client import redis_manager
 
 router = APIRouter()
+PREVIEW_HISTORY_MINUTES = 15
+def _full_view(auth: dict, doc: dict):
+    """Full flow document; free plans also get one line on what the paid plans add."""
+    if tier_level(auth.get("tier")) > 0:
+        return FlowResponse(**doc)
+    unlocks = ("Flow history, the full market scanner (100 rows), the event feed, BTC climate, ignitions and US equity flow; "
+               f"derivatives for 10 symbols, Horus Cortex and webhooks on {plan_name(auth, 2)}")
+    return JSONResponse(FlowResponse(**doc).model_dump(mode="json") | {"upgrade": upgrade_block(auth, 1, unlocks)})
 
 
 @router.get("/{symbol}", response_model=FlowResponse)
@@ -47,17 +55,15 @@ async def get_flow_signal(symbol: str,
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
 
     if FREE_TIER_SYMBOLS and tier_level(auth.get("tier")) == 0 and clean_symbol not in FREE_TIER_SYMBOLS:
-        raise HTTPException(status_code=403, detail={
-            "error": "upgrade_required", "required_plan": "BUILDER",
-            "message": f"The free plan covers {', '.join(sorted(FREE_TIER_SYMBOLS))}. Other pairs need the BUILDER plan or higher.",
-        })
+        raise upgrade_required(auth, 1, f"Your plan covers {', '.join(sorted(FREE_TIER_SYMBOLS))}. "
+                                        f"Other pairs need the {plan_name(auth, 1)} plan or higher.", "Every Binance spot pair")
 
     # ⚡ Fast path: Redis cache (2s TTL). Keep the original timestamp so freshness is honest.
     cached = await redis_manager.get_cached_response(clean_symbol)
     if cached:
         ts = cached.get("timestamp") or time.time()
         cached["freshness_ms"] = int(max(0.0, time.time() - ts) * 1000)
-        return JSONResponse(compact_flow(cached)) if view == "compact" else FlowResponse(**cached)
+        return JSONResponse(compact_flow(cached)) if view == "compact" else _full_view(auth, cached)
 
     status = ws_manager.add_symbol(clean_symbol)
     if status == "invalid":
@@ -76,7 +82,7 @@ async def get_flow_signal(symbol: str,
     await redis_manager.set_cached_response(clean_symbol, response_data)
     if view == "compact":
         return JSONResponse(compact_flow(response_data))
-    return FlowResponse(**response_data)
+    return _full_view(auth, response_data)
 
 
 async def build_flow_response(clean_symbol: str, update_oscillation: bool = True) -> dict:
@@ -223,8 +229,8 @@ async def build_flow_response(clean_symbol: str, update_oscillation: bool = True
 @router.get("/{symbol}/history")
 async def get_flow_history(
     symbol: str,
-    minutes: int = Query(default=30, ge=1, le=1440, description="Lookback in minutes (BUILDER up to 60, PRO up to 1440)"),
-    auth: dict = Depends(require_tier("BUILDER"))
+    minutes: int = Query(default=30, ge=1, le=1440, description="Lookback in minutes (free preview 15, BUILDER / RapidAPI PRO up to 60, PRO / RapidAPI ULTRA up to 1440)"),
+    auth: dict = Depends(tier_or_preview("BUILDER"))
 ):
     """
     🦅 Flow History — Returns the last N minutes of orderflow snapshots.
@@ -233,9 +239,9 @@ async def get_flow_history(
     the signal fields plus price, deltas, ratios and depth metrics.
     """
     clean_symbol = symbol.replace("/", "").replace("-", "").upper()
-    if minutes > 60 and tier_level(auth.get("tier")) < 2:
-        raise HTTPException(status_code=403, detail={"error": "upgrade_required", "required_plan": "PRO",
-                                                     "message": "History beyond 60 minutes needs the PRO plan."})
+    cap = PREVIEW_HISTORY_MINUTES if auth["preview"] else 60 if tier_level(auth.get("tier")) < 2 else 1440
+    capped = minutes > cap
+    minutes = min(minutes, cap)
 
     history = await redis_manager.get_history(clean_symbol, minutes)
 
@@ -245,9 +251,15 @@ async def get_flow_history(
             detail=f"No history available for {clean_symbol}. The symbol must be actively tracked first."
         )
 
-    return {
+    out = {
         "symbol": clean_symbol,
         "minutes": minutes,
         "snapshots": len(history),
         "history": history
     }
+    if auth["preview"]:
+        out["upgrade"] = upgrade_block(auth, 1, f"Up to 60 minutes of history, 24 hours on {plan_name(auth, 2)}",
+                                       f"The last {cap} minutes on your plan")
+    elif capped:
+        out["upgrade"] = upgrade_block(auth, 2, "Up to 24 hours (1440 minutes) of history", f"The last {cap} minutes on your plan")
+    return out

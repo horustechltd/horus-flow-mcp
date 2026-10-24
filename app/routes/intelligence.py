@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional
 
-from app.auth import verify_api_key, require_tier
+from app.auth import verify_api_key, require_tier, tier_or_preview, upgrade_block, upgrade_required, plan_name
 from app.redis_client import redis_manager
 from app.models import ENGINE_VERSION
 from app.derivatives_publisher import KEY_XFLOW, KEY_HEATMAP, KEY_COMPOSITE
@@ -64,6 +64,30 @@ def _reject_if_stale(data: dict, max_age: float, source: str):
     return age
 
 
+FREE_DERIV_SYMBOL = "BTCUSDT"  # derivatives previews below the plan
+
+
+def _keep_only(data: dict, keep: set) -> dict:
+    """Preview of a document: the listed fields, plus the names of the ones the plan unlocks."""
+    out = {k: v for k, v in data.items() if k in keep}
+    out["locked_fields"] = sorted(k for k in data if k not in keep)
+    return out
+
+
+def _preview_symbol(auth: dict, clean: str, what: str):
+    if auth["preview"] and clean != FREE_DERIV_SYMBOL:
+        plan = plan_name(auth, auth["min_level"])
+        raise upgrade_required(auth, auth["min_level"],
+                               f"{what} for {clean} needs the {plan} plan. {FREE_DERIV_SYMBOL} is open on your plan as a preview.",
+                               f"{what} for all {len(VALID_SYMBOLS)} symbols: {', '.join(sorted(VALID_SYMBOLS))}")
+
+
+def _attach_upgrade(auth: dict, data: dict, unlocks: str, limits: str) -> dict:
+    if auth["preview"]:
+        data["upgrade"] = upgrade_block(auth, auth["min_level"], unlocks, limits)
+    return data
+
+
 async def _incubator_engine_online() -> bool:
     async for _ in redis_manager.redis.scan_iter("incubator:*", count=500):
         return True
@@ -99,7 +123,7 @@ router_intelligence = APIRouter()
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/climate", tags=["Intelligence"])
-async def get_market_climate(request: Request, auth: dict = Depends(require_tier("BUILDER"))):
+async def get_market_climate(request: Request, auth: dict = Depends(tier_or_preview("BUILDER"))):
     """
     🦅 WiseMan Climate Gate — Is the market worth trading right now?
 
@@ -161,7 +185,7 @@ async def get_market_climate(request: Request, auth: dict = Depends(require_tier
         else:
             risk = "LOW"
 
-        return {
+        out = {
             # === Strict Schema ===
             "action": action,
             "direction_bias": "NEUTRAL",  # Climate is direction-agnostic
@@ -182,6 +206,11 @@ async def get_market_climate(request: Request, auth: dict = Depends(require_tier
             "timestamp": climate.get("timestamp", ""),
             "engine": "WiseMan Cognitive Gate v64.0"
         }
+        if auth["preview"]:
+            out = _keep_only(out, {"market_mode", "health", "market_regime", "risk", "engine_version",
+                                   "freshness_ms", "timestamp_utc", "timestamp", "engine"})
+        return _attach_upgrade(auth, out, "Confidence, reasoning, action and aggression level of the BTC climate",
+                               "Market mode and health only on your plan")
 
     except HTTPException:
         raise
@@ -195,7 +224,7 @@ async def get_market_climate(request: Request, auth: dict = Depends(require_tier
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/ignitions", tags=["Intelligence"])
-async def get_ignitions(request: Request, auth: dict = Depends(require_tier("BUILDER"))):
+async def get_ignitions(request: Request, auth: dict = Depends(tier_or_preview("BUILDER"))):
     """
     🔥 Ignition Scanner — Which coins are about to explode?
 
@@ -277,7 +306,7 @@ async def get_ignitions(request: Request, auth: dict = Depends(require_tier("BUI
             ign_risk = "LOW"
             ign_market_regime = "RANGING"
         
-        return {
+        out = {
             # === Strict Schema ===
             "action": ign_action,
             "direction_bias": "BULLISH" if regime_bias == "RISING" else "BEARISH" if regime_bias == "FALLING" else "NEUTRAL",
@@ -298,10 +327,11 @@ async def get_ignitions(request: Request, auth: dict = Depends(require_tier("BUI
                 "pct_above_0_6": round(metrics.get("pct_above_0_6", 0) * 100, 1),
                 "pct_above_0_8": round(metrics.get("pct_above_0_8", 0) * 100, 1),
             },
-            "top_ignitions": distribution,
+            "top_ignitions": distribution[:3] if auth["preview"] else distribution,
             "timestamp": state.get("timestamp", ""),
             "engine": "Volatility Breakout Engine (VBE)"
         }
+        return _attach_upgrade(auth, out, "Top 20 coins by ignition score", "Top 3 coins only on your plan")
 
     except HTTPException:
         raise
@@ -546,7 +576,7 @@ def _check_freshness(data: dict) -> str:
 
 
 @router_intelligence.get("/liquidation-heatmap", tags=["Level 3 Intelligence"])
-async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(require_tier("PRO"))):
+async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(tier_or_preview("PRO"))):
     """
     🔥 Liquidation Heatmap — Where is the price forced to go?
 
@@ -562,6 +592,7 @@ async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(
     clean = symbol.upper()
     if clean not in VALID_SYMBOLS:
         raise HTTPException(status_code=404, detail=f"Symbol {clean} not tracked. Available: {', '.join(sorted(VALID_SYMBOLS))}")
+    _preview_symbol(auth, clean, "Liquidation heatmap")
 
     if not redis_manager.redis:
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
@@ -615,7 +646,7 @@ async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(
         raw_explanation = data.get("risk_assessment", "").split(" — ")[1] if " — " in data.get("risk_assessment", "") else ""
         data["explanation"] = _strip_emojis(raw_explanation)
         
-        return data
+        return _attach_upgrade(auth, data, f"All {len(VALID_SYMBOLS)} symbols: {', '.join(sorted(VALID_SYMBOLS))}", "BTCUSDT only on your plan")
 
     except HTTPException:
         raise
@@ -629,7 +660,7 @@ async def get_liquidation_heatmap(symbol: str = "BTCUSDT", auth: dict = Depends(
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/cross-exchange-flow", tags=["Level 3 Intelligence"])
-async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(require_tier("PRO"))):
+async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(tier_or_preview("PRO"))):
     """
     🔄 Cross-Exchange Flow — Is the move real or speculative?
 
@@ -643,6 +674,7 @@ async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(
     clean = symbol.upper()
     if clean not in VALID_SYMBOLS:
         raise HTTPException(status_code=404, detail=f"Symbol {clean} not tracked. Available: {', '.join(sorted(VALID_SYMBOLS))}")
+    _preview_symbol(auth, clean, "Cross-exchange flow")
 
     if not redis_manager.redis:
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
@@ -700,7 +732,7 @@ async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(
         raw_xflow_explanation = data.get("risk_assessment", "").split(" — ")[1] if " — " in data.get("risk_assessment", "") else data.get("risk_assessment", "")
         data["explanation"] = _strip_emojis(raw_xflow_explanation)
         
-        return data
+        return _attach_upgrade(auth, data, f"All {len(VALID_SYMBOLS)} symbols: {', '.join(sorted(VALID_SYMBOLS))}", "BTCUSDT only on your plan")
 
     except HTTPException:
         raise
@@ -714,7 +746,7 @@ async def get_cross_exchange_flow(symbol: str = "BTCUSDT", auth: dict = Depends(
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/composite", tags=["Level 3 Intelligence"])
-async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depends(require_tier("PRO"))):
+async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depends(tier_or_preview("PRO"))):
     """
     🦅 Composite Intelligence — The Final Verdict.
 
@@ -736,6 +768,7 @@ async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depen
     clean = symbol.upper()
     if clean not in VALID_SYMBOLS:
         raise HTTPException(status_code=404, detail=f"Symbol {clean} not tracked. Available: {', '.join(sorted(VALID_SYMBOLS))}")
+    _preview_symbol(auth, clean, "Composite intelligence")
 
     if not redis_manager.redis:
         raise HTTPException(status_code=503, detail="Intelligence data source unavailable")
@@ -804,7 +837,7 @@ async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depen
         data["timestamp_utc"] = datetime.now(timezone.utc).isoformat()
         data["explanation"] = _strip_emojis(data.get("one_liner", ""))
         
-        return data
+        return _attach_upgrade(auth, data, f"All {len(VALID_SYMBOLS)} symbols: {', '.join(sorted(VALID_SYMBOLS))}", "BTCUSDT only on your plan")
 
     except HTTPException:
         raise
@@ -818,7 +851,7 @@ async def get_composite_intelligence(symbol: str = "BTCUSDT", auth: dict = Depen
 # ═══════════════════════════════════════════════════════════════
 
 @router_intelligence.get("/market-intelligence", tags=["Level 3 Intelligence"])
-async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))):
+async def get_full_market_intelligence(auth: dict = Depends(tier_or_preview("PRO"))):
     """
     🌐 Full Market Intelligence — Everything in one call.
 
@@ -885,7 +918,7 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
             }
 
         # Per-symbol detail
-        for sym in sorted(VALID_SYMBOLS):
+        for sym in [FREE_DERIV_SYMBOL] if auth["preview"] else sorted(VALID_SYMBOLS):
             sym_data = {}
             for key_tpl, label in [
                 (KEY_HEATMAP, "heatmap"),
@@ -933,7 +966,11 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
                         "verdict": verdict,
                     }
 
-        return result
+        if auth["preview"]:
+            result = _keep_only(result, {"timestamp", "timestamp_utc", "engine", "engine_version",
+                                         "symbols", "action_summary", "stale_excluded"})
+        return _attach_upgrade(auth, result, "All symbols, market-wide summaries, climate, ignition and Cortex state in one call",
+                               "BTCUSDT only on your plan")
 
     except HTTPException:
         raise
@@ -948,7 +985,7 @@ async def get_full_market_intelligence(auth: dict = Depends(require_tier("PRO"))
 
 @router_intelligence.get("/cortex", tags=["Level 4 Cognitive Intelligence"])
 @router_intelligence.get("/maestro", tags=["Level 4 Cognitive Intelligence"], include_in_schema=False)
-async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
+async def get_horus_cortex(auth: dict = Depends(tier_or_preview("PRO"))):
     """
     🦅 Horus Cortex — Full-Spectrum Cognitive Market Brain.
 
@@ -1037,7 +1074,7 @@ async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
             if isinstance(c, dict) and c.get("contradiction_id") and "description_en" not in c:
                 c["description_en"] = c["contradiction_id"].replace("_vs_", " vs ").replace("_", " ").title()
 
-        return {
+        out = {
             "status": "success",
             "timestamp": time.time(),
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -1078,6 +1115,13 @@ async def get_horus_cortex(auth: dict = Depends(require_tier("PRO"))):
             "data_freshness": freshness_status,
             "freshness_ms": int(cortex_age * 1000),
         }
+        if auth["preview"]:
+            out = _keep_only(out, {"status", "timestamp", "timestamp_utc", "engine", "regime_state", "transition_direction",
+                                   "trust_score", "data_freshness", "freshness_ms"})
+            out["narrative"] = {k: narrative.get(k) for k in ("headline", "headline_en")} if isinstance(narrative, dict) else {}
+            out["locked_fields"] = [f if f != "narrative" else "narrative (beyond the headline)" for f in out["locked_fields"]]
+        return _attach_upgrade(auth, out, "Action policy, execution levels, contradictions, evidence ledger, trust breakdown and full narrative",
+                               "Regime, trust score and headline only on your plan")
     except HTTPException:
         raise
     except Exception as e:

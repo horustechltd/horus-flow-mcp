@@ -3,7 +3,7 @@
   "info": {
     "title": "Horus Flow Intelligence",
     "version": "3.1.0",
-    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) order flow for any pair, track record, US session, first 3 scanner results. PRO adds the full scanner, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks.\n\nMarket data, not financial advice.",
+    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) order flow for any pair, track record, US session, first 3 scanner results. PRO adds the full scanner, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks. Paid endpoints answer lower plans with a live preview (for example BTCUSDT only, or the top 3) and an `upgrade` block that says what the next plan unlocks, so you can try every endpoint before you subscribe.\n\nMarket data, not financial advice.",
     "contact": {
       "name": "Horus Tech Ltd",
       "email": "admin@horustek.pro",
@@ -209,7 +209,7 @@
           "Crypto Order Flow"
         ],
         "summary": "Order flow history",
-        "description": "Snapshots recorded every 15 seconds with signal, price, deltas, ratios and depth metrics. Use it to see whether pressure is building or fading.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "Snapshots recorded every 15 seconds with signal, price, deltas, ratios and depth metrics. Use it to see whether pressure is building or fading.\n\nPlans: PRO (60 minutes), ULTRA and MEGA (24 hours). BASIC (free): live preview of the last 15 minutes.",
         "operationId": "get_flow_history",
         "responses": {
           "200": {
@@ -356,7 +356,7 @@
           "Derivatives"
         ],
         "summary": "Futures vs spot, funding and open interest",
-        "description": "Futures/spot 24h volume vs its 7-day median, mark/index premium, funding, open interest and its 10/30-minute change, positioning signal, and open interest and funding across Binance, Bybit and OKX. Refreshed every 60 seconds.\n\nPlans: ULTRA, MEGA.",
+        "description": "Futures/spot 24h volume vs its 7-day median, mark/index premium, funding, open interest and its 10/30-minute change, positioning signal, and open interest and funding across Binance, Bybit and OKX. Refreshed every 60 seconds.\n\nPlans: ULTRA, MEGA. BASIC and PRO: live preview for BTCUSDT.",
         "operationId": "get_cross_exchange_flow",
         "responses": {
           "200": {
@@ -482,7 +482,7 @@
           "Derivatives"
         ],
         "summary": "Crowd positioning and liquidation levels",
-        "description": "Global and top-trader long/short ratios against their own 24h median, smart-money divergence, taker flow, estimated liquidation prices at 100x/50x/25x/10x, and liquidations observed in the last 5 minutes.\n\nPlans: ULTRA, MEGA.",
+        "description": "Global and top-trader long/short ratios against their own 24h median, smart-money divergence, taker flow, estimated liquidation prices at 100x/50x/25x/10x, and liquidations observed in the last 5 minutes.\n\nPlans: ULTRA, MEGA. BASIC and PRO: live preview for BTCUSDT.",
         "operationId": "get_liquidation_heatmap",
         "responses": {
           "200": {
@@ -612,7 +612,7 @@
           "Derivatives"
         ],
         "summary": "Composite score",
-        "description": "A 0-100 score from four components (climate, ignition, positioning, futures/spot flow), with verdict and direction. The `method` field documents the formula.\n\nPlans: ULTRA, MEGA.",
+        "description": "A 0-100 score from four components (climate, ignition, positioning, futures/spot flow), with verdict and direction. The `method` field documents the formula.\n\nPlans: ULTRA, MEGA. BASIC and PRO: live preview for BTCUSDT.",
         "operationId": "get_composite",
         "responses": {
           "200": {
@@ -718,7 +718,7 @@
           "Derivatives"
         ],
         "summary": "Market overview for 10 majors",
-        "description": "Climate, ignition regime, and for each of 10 majors the composite, positioning and futures/spot documents in one call. Stale parts are left out and listed in `stale_excluded`.\n\nPlans: ULTRA, MEGA.",
+        "description": "Climate, ignition regime, and for each of 10 majors the composite, positioning and futures/spot documents in one call. Stale parts are left out and listed in `stale_excluded`.\n\nPlans: ULTRA, MEGA. BASIC and PRO: live preview for BTCUSDT.",
         "operationId": "get_market_intelligence",
         "responses": {
           "200": {
@@ -971,7 +971,7 @@
           "Market Regime"
         ],
         "summary": "Horus Cortex",
-        "description": "BTC market regime, trust score (0-100), contradictions between evidence families, invalidation and breakout levels, and position-size multipliers by strategy type. English and Arabic narrative.\n\nPlans: ULTRA, MEGA.",
+        "description": "BTC market regime, trust score (0-100), contradictions between evidence families, invalidation and breakout levels, and position-size multipliers by strategy type. English and Arabic narrative.\n\nPlans: ULTRA, MEGA. BASIC and PRO: live preview with regime, trust score and headline.",
         "operationId": "get_cortex",
         "responses": {
           "200": {
@@ -1137,7 +1137,7 @@
           "Market Regime"
         ],
         "summary": "BTC climate",
-        "description": "WiseMan BTC climate: mode (trend, range, chop), health and confidence, with the reasoning inputs.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "WiseMan BTC climate: mode (trend, range, chop), health and confidence, with the reasoning inputs.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): live preview with market mode and health.",
         "operationId": "get_climate",
         "responses": {
           "200": {
@@ -1204,7 +1204,7 @@
           "Market Regime"
         ],
         "summary": "Breakout scanner",
-        "description": "Volatility-breakout scores (0-1) across about 750 crypto assets, refreshed every minute: global regime and the top assets. A ranking of breakout conditions, not a probability of a move.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "Volatility-breakout scores (0-1) across about 750 crypto assets, refreshed every minute: global regime and the top assets. A ranking of breakout conditions, not a probability of a move.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): live preview of the top 3.",
         "operationId": "get_ignitions",
         "responses": {
           "200": {
@@ -1606,7 +1606,7 @@
           "Agent Layer"
         ],
         "summary": "Signal ledger for backtesting",
-        "description": "Point-in-time ledger: every signal emitted for BTCUSDT, ETHUSDT or SOLUSDT between start and end, with the price and the move 1/5/15/30 minutes later. Maximum range 31 days.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "Point-in-time ledger: every signal emitted for BTCUSDT, ETHUSDT or SOLUSDT between start and end, with the price and the move 1/5/15/30 minutes later. Maximum range 31 days.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): live preview of 20 signals from the last 24 hours.",
         "operationId": "get_signal_ledger",
         "responses": {
           "200": {
@@ -1752,7 +1752,7 @@
           "Agent Layer"
         ],
         "summary": "Recent events",
-        "description": "What changed since your last check, oldest first: liquidation_cascade, strong_flow_signal, composite_change, cortex_regime_change, climate_change, ignition_alert, us_session_change, trading_halt. Pass the last id you received as since_id.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "What changed since your last check, oldest first: liquidation_cascade, strong_flow_signal, composite_change, cortex_regime_change, climate_change, ignition_alert, us_session_change, trading_halt. Pass the last id you received as since_id.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): the last 3 events, 15 minutes late.",
         "operationId": "get_events",
         "responses": {
           "200": {
@@ -2406,7 +2406,7 @@
           "US Equities"
         ],
         "summary": "US stock or ETF order flow",
-        "description": "Order flow from the IEX feed for one US stock or ETF. IEX is about 3% of US consolidated volume, so readings are a sample and extreme verdicts are capped. Outside market hours returns MARKET_CLOSED.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "Order flow from the IEX feed for one US stock or ETF. IEX is about 3% of US consolidated volume, so readings are a sample and extreme verdicts are capped. Outside market hours returns MARKET_CLOSED.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): SPY and QQQ.",
         "operationId": "get_equity_flow",
         "responses": {
           "200": {
@@ -2611,7 +2611,7 @@
           "US Equities"
         ],
         "summary": "Crypto and US equities side by side",
-        "description": "BTC order flow next to SPY, QQQ, COIN, MSTR and IBIT flow over the last 5 minutes: risk-on together, risk-off together, or diverging. When US markets are closed it says so and keeps BTC as the live gauge.\n\nPlans: PRO, ULTRA, MEGA.",
+        "description": "BTC order flow next to SPY, QQQ, COIN, MSTR and IBIT flow over the last 5 minutes: risk-on together, risk-off together, or diverging. When US markets are closed it says so and keeps BTC as the live gauge.\n\nPlans: PRO, ULTRA, MEGA. BASIC (free): SPY and QQQ only.",
         "operationId": "get_cross_asset",
         "responses": {
           "200": {

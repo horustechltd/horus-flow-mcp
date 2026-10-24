@@ -5,13 +5,15 @@ Horus Flow Signal API — equity.py routes
 import time
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
-from app.auth import verify_api_key, require_tier
+from app.auth import verify_api_key, require_tier, tier_or_preview, upgrade_block, upgrade_required, plan_name
 from app.models import FlowResponse, ENGINE_VERSION
 from app.interpreters.flow_interpreter import interpret_flow
 from app.feeds.alpaca_ws import alpaca_ws_manager
 
 router_equity = APIRouter()
+PREVIEW_SYMBOLS = ("SPY", "QQQ")  # equity flow open to lower plans as a preview
 
 # Alpaca's free feed is IEX only. IEX prints were 2.4%-3.6% of US consolidated
 # volume for SPY and NVDA in October 2026, so every equity reading is a sample.
@@ -80,12 +82,25 @@ async def get_macro_blocks(auth: dict = Depends(require_tier("FREE"))):
     }
 
 @router_equity.get("/{symbol}", response_model=FlowResponse)
-async def get_equity_flow_signal(symbol: str, auth: dict = Depends(require_tier("BUILDER"))):
+async def get_equity_flow_signal(symbol: str, auth: dict = Depends(tier_or_preview("BUILDER"))):
     """
     Get live orderflow signal for a specific US Equity symbol via IEX.
+    Below the plan, SPY and QQQ are served as a preview.
     """
     clean_symbol = symbol.upper()
-    
+    unlocks = "Order flow for any US stock or ETF on IEX"
+    if auth["preview"] and clean_symbol not in PREVIEW_SYMBOLS:
+        raise upgrade_required(auth, auth["min_level"],
+                               f"Equity flow for {clean_symbol} needs the {plan_name(auth, auth['min_level'])} plan. "
+                               f"{' and '.join(PREVIEW_SYMBOLS)} are open on your plan as a preview.", unlocks)
+    response = await _equity_signal(symbol, clean_symbol)
+    if not auth["preview"]:
+        return response
+    return JSONResponse(response.model_dump(mode="json")
+                        | {"upgrade": upgrade_block(auth, auth["min_level"], unlocks, f"{' and '.join(PREVIEW_SYMBOLS)} only on your plan")})
+
+
+async def _equity_signal(symbol: str, clean_symbol: str) -> FlowResponse:
     # Dynamically add to WS
     added = alpaca_ws_manager.add_symbol(clean_symbol)
     

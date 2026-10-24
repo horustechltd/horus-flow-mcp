@@ -10,6 +10,7 @@ who uses what. These counters give the same picture from our side, per UTC day:
   routes   requests per endpoint template, e.g. /v1/flow/crypto/{symbol}
   status   responses per HTTP status
   denied   plan + endpoint + status for 401/403/429, i.e. what subscribers tried but could not get
+  previews plan + endpoint served as a reduced preview, i.e. paid features a lower plan is trying
   hosts    Host header seen (tells which base URL RapidAPI is configured with)
 
 Kept 100 days. Read with GET /v1/admin/rapidapi-usage (admin key) or the daily Telegram summary.
@@ -31,7 +32,7 @@ def _k(day: str, kind: str) -> str:
     return f"{PREFIX}:{day}:{kind}"
 
 
-async def record(redis, plan: str, user: str, route: str, status: int, host: str) -> None:
+async def record(redis, plan: str, user: str, route: str, status: int, host: str, preview: bool = False) -> None:
     if not redis:
         return
     day = _day()
@@ -46,6 +47,9 @@ async def record(redis, plan: str, user: str, route: str, status: int, host: str
     if status in DENIED_STATUSES:
         pipe.hincrby(_k(day, "denied"), f"{plan} {route} {status}", 1)
         keys.append(_k(day, "denied"))
+    if preview and status == 200:
+        pipe.hincrby(_k(day, "previews"), f"{plan} {route}", 1)
+        keys.append(_k(day, "previews"))
     for key in keys:
         pipe.expire(key, KEEP_SECONDS)
     await pipe.execute()
@@ -70,6 +74,7 @@ async def day_summary(redis, day: str) -> Dict[str, Any]:
         "status": _ints(await redis.hgetall(_k(day, "status"))),
         "top_endpoints": _top(_ints(await redis.hgetall(_k(day, "routes"))), 20),
         "denied": _top(_ints(await redis.hgetall(_k(day, "denied"))), 20),
+        "previews": _top(_ints(await redis.hgetall(_k(day, "previews"))), 20),
         "hosts": _ints(await redis.hgetall(_k(day, "hosts"))),
     }
 
@@ -93,6 +98,10 @@ def telegram_text(s: Dict[str, Any]) -> str:
         top = list(s["denied"].items())[:3]
         lines.append(f"طلبات رُفضت لأنها خارج الخطة: {denied}")
         lines += [f"  {k}: {v}" for k, v in top]
+    previews = sum(s.get("previews", {}).values())
+    if previews:
+        lines.append(f"معاينات مجانية لمزايا مدفوعة: {previews}")
+        lines += [f"  {k}: {v}" for k, v in list(s["previews"].items())[:3]]
     top_ep = list(s["top_endpoints"].items())[:3]
     if top_ep:
         lines.append("أكثر النهايات طلباً: " + "، ".join(f"{k} ({v})" for k, v in top_ep))

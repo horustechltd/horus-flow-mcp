@@ -358,18 +358,20 @@ async def scan_market(
                                     min_volume_24h, filters, sort_by, order == "desc")
     results = [market_scanner.public_row(r) for r in rows]
 
-    # attach Horus live order flow (with its measured hit rate) where Horus tracks the pair
-    from app.feeds.binance_ws import ws_manager
-    from app.routes.flow import build_flow_response
-    for r in results:
-        if r["symbol"] in ws_manager.symbols:
-            try:
-                f = await build_flow_response(r["symbol"], update_oscillation=False)
-                rel = f.get("reliability") or {}
-                r["horus_flow"] = {"signal": f["signal"], "direction_bias": f["direction_bias"],
-                                   "hit_rate_5m": (rel.get("hit_rate") or {}).get("5m")}
-            except HTTPException:
-                pass
+    # Attach the spot order book where the book recorder covers the pair. (Horus's flow verdict used to sit
+    # here; it measured as a coin flip and contradicted the scan, e.g. WHALE_EXIT on a buyers-in-control row.)
+    from app.redis_client import redis_manager
+    raw = await redis_manager.redis.get(book_measure.LATEST_KEY) if redis_manager.redis else None
+    book = json.loads(raw) if raw else None
+    if book and time.time() - book["timestamp_epoch"] <= BOOK_MAX_AGE_S:
+        by_symbol = {x["symbol"]: x for x in book["rows"]}
+        for r in results:
+            b = by_symbol.get(r["symbol"])
+            if b:
+                r["spot_book"] = {"top5_imbalance": b["top5_imbalance"], "book_tilt": book_measure.tilt(b["top5_imbalance"]),
+                                  "bid_ask_ratio": b["bid_ask_ratio"]}
+    else:
+        book = None
 
     out = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -384,9 +386,12 @@ async def scan_market(
             "net_taker_flow_15m_usd": "aggressive buys minus aggressive sells over 15 minutes, USD",
             "volume_surge": "average 5-minute volume of the last 15 minutes / the 45 minutes before",
             "funding_rate": "per 8 hours, Binance perpetual",
+            "spot_book": "the Binance spot order book of the same coin now (30 deep pairs): share of top-five size on the bid "
+                         "side (0.5 = even), its tilt label and the bid/ask size ratio; see spot_book_measured",
         },
+        "spot_book_measured": await book_measure.current_measure(redis_manager.redis) if book else None,
         "note": "Rankings of current conditions, not predictions. Picks are recorded so their accuracy can be published later.",
-        "data_source": "Binance USDT-margined perpetuals, 5-minute candles",
+        "data_source": "Binance USDT-margined perpetuals, 5-minute candles; spot order book from Binance spot",
     }
     if free and limit > FREE_SCAN_ROWS:
         out["upgrade"] = upgrade_block(auth, 1, "Up to 100 results per scan", f"The first {FREE_SCAN_ROWS} results on your plan")

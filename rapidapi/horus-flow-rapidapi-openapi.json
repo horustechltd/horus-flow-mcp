@@ -2913,7 +2913,7 @@
         ],
         "summary": "Scan the market",
         "operationId": "scan_market",
-        "description": "One call ranks about 250 Binance USDT perpetuals (24h volume >= $5M), each refreshed at least every ~2 minutes from 5-minute candles: 15m and 1h price change, share of notional bought by aggressive buyers, net taker flow in USD, volume surge vs the previous 45 minutes, funding, ignition score, and Horus live flow with its measured hit rate where tracked. Presets answer common questions (where are buyers in control, where is volume surging, breakout candidates with buyers behind them); custom uses the filters. Rankings of current conditions, not predictions.\n\nPlans: BASIC (free) returns the first 3 results; PRO, ULTRA and MEGA return up to 100.",
+        "description": "One call ranks about 250 Binance USDT perpetuals (24h volume >= $5M), each refreshed at least every ~2 minutes from 5-minute candles: 15m and 1h price change, share of notional bought by aggressive buyers, net taker flow in USD, volume surge vs the previous 45 minutes, funding, ignition score, and, for the 30 pairs Horus records, the spot order book's tilt (spot_book) with its measured link to the next minute (spot_book_measured). Presets answer common questions (where are buyers in control, where is volume surging, breakout candidates with buyers behind them); custom uses the filters. Rankings of current conditions, not predictions.\n\nPlans: BASIC (free) returns the first 3 results; PRO, ULTRA and MEGA return up to 100.",
         "parameters": [
           {
             "name": "preset",

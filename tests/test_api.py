@@ -1172,3 +1172,21 @@ def test_flow_carries_book_information(fresh_state):
     assert bi["top5_imbalance"] == full["metrics"]["top5_imbalance"] and bi["measured"]["field"] == "top5_imbalance"
     compact = get("/v1/flow/crypto/ETHUSDT?view=compact", "builder").json()
     assert compact["book_link_1m"] == 0.073 and compact["book_tilt"] in ("BID_HEAVY", "ASK_HEAVY", "BALANCED")
+
+
+def test_scan_rows_carry_spot_book_not_verdicts(fresh_state, monkeypatch):
+    from app import book_measure
+    book_measure._cache.update(at=0.0, block=None)
+    rows = {f"S{i:02d}USDT": dict(_scanner_rows()["AAAUSDT"], symbol=f"S{i:02d}USDT", net_taker_flow_15m_usd=1e5 * i) for i in range(10)}
+    monkeypatch.setitem(ms._state, "rows", rows)
+    monkeypatch.setitem(ms._state, "universe", list(rows))
+    monkeypatch.setitem(ms._state, "cycle_at", time.time())
+    _put_book(fresh_state)                       # book rows S00..S29
+    paid = get("/v1/scan?preset=buyers_in_control&limit=10", "builder").json()
+    first = paid["results"][0]
+    assert first["symbol"] == "S09USDT" and "horus_flow" not in first
+    assert first["spot_book"] == {"top5_imbalance": 0.38, "book_tilt": "ASK_HEAVY", "bid_ask_ratio": 1.9}
+    assert paid["spot_book_measured"]["field"] == "top5_imbalance"
+    _put_book(fresh_state, age=120)              # stale book: nothing attached, nothing claimed
+    stale = get("/v1/scan?preset=buyers_in_control&limit=10", "builder").json()
+    assert "spot_book" not in stale["results"][0] and stale["spot_book_measured"] is None

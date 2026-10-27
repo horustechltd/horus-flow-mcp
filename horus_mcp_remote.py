@@ -277,11 +277,12 @@ async def scan_market(preset: str = "buyers_in_control", limit: int = 10, min_vo
     """Scan about 190 Binance perpetual markets in one call and get a ranked list. preset is one of:
     buyers_in_control, sellers_in_control, volume_surge, breakout_candidates, crowded_funding, top_movers.
     Each row: price, 15m and 1h change, aggressive buy share, net taker flow in USD, volume surge, funding,
-    ignition score, and Horus live flow with its measured hit rate where Horus tracks the pair.
+    ignition score, and, for the 30 pairs Horus records, the spot order book's tilt (spot_book) with its measured
+    link to the next minute (spot_book_measured).
     Use it to find where to look before calling get_crypto_flow or get_derivatives on a specific market.
     Rankings of current conditions, not predictions. Free plans: 3 rows; TRADER / RapidAPI PRO and above: up to 100."""
     r = await _get(ctx, "/v1/scan", {"preset": preset, "limit": max(1, min(limit, 50)), "min_volume_24h": min_volume_24h_usd})
-    return {k: r[k] for k in ("preset", "criteria", "coverage", "count", "results", "note", "upgrade") if k in r}
+    return {k: r[k] for k in ("preset", "criteria", "coverage", "count", "results", "spot_book_measured", "note", "upgrade") if k in r}
 
 
 @mcp.tool(annotations=RO, structured_output=True)

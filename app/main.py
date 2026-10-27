@@ -166,10 +166,6 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 async def root_redirect():
     return RedirectResponse(url="/site/")
 
-@app.get("/.well-known/mcp-registry-auth", response_class=PlainTextResponse, tags=["System"])
-async def mcp_registry_auth():
-    return "v=MCPv1; k=ed25519; p=nWYLm+WB0QKWTVhGQtHDJoNL4eraIJjq56Wjrfj6Vs0="
-
 @app.get("/v1/admin/rapidapi-usage", tags=["System"], include_in_schema=False)
 async def rapidapi_usage(days: int = Query(7, ge=1, le=100), auth: dict = Depends(require_tier("ADMIN"))):
     """RapidAPI usage per day: requests and unique subscribers per plan, endpoints, denials, hosts."""

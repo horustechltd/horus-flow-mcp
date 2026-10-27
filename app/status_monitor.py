@@ -64,6 +64,8 @@ COMPONENTS: List[Dict[str, Any]] = [
 _latest: Dict[str, Dict[str, Any]] = {}
 _down_streak: Dict[str, int] = {}
 _started_at = time.time()
+_uptime_cache: Dict[str, Any] = {"at": 0.0, "up24": {}, "up7": {}}
+UPTIME_CACHE_S = 60  # samples are one a minute; recomputing 20k of them per /v1/status call stalled the API
 
 
 def _ts_of(doc: Optional[Dict[str, Any]]) -> Optional[float]:
@@ -356,8 +358,9 @@ async def _daily_rapidapi_report():
 
 async def public_status() -> Dict[str, Any]:
     sample = _latest or await check_all()
-    up24 = await _uptime(86400)
-    up7 = await _uptime(7 * 86400)
+    if time.time() - _uptime_cache["at"] > UPTIME_CACHE_S:
+        _uptime_cache.update(at=time.time(), up24=await _uptime(86400), up7=await _uptime(7 * 86400))
+    up24, up7 = _uptime_cache["up24"], _uptime_cache["up7"]
     comps = []
     for c in COMPONENTS:
         info = sample.get(c["name"], {"status": "unknown", "age_seconds": None})

@@ -93,63 +93,55 @@ class FlowDetector:
         large_sell_count = 0
         sell_notional_5s = 0.0
         total_count_30s = 0
-        
+        prices_30s = []  # prices inside the 30 s window, in arrival order
+
+        # One pass (it runs for every symbol about once a second; it was three passes)
         for t in trades:
             age = now - t["ts"]
-            direction = -1 if t["is_sell"] else 1  # sell = negative, buy = positive
-            notional_signed = t["notional"] * direction
-            
-            if age <= 300:
-                delta_5m += notional_signed
-                
-                if age <= 60:
-                    delta_60s += notional_signed
-                
-                if age <= 30:
-                    delta_30s += notional_signed
-                    total_count_30s += 1
-                    if t["is_sell"]:
-                        sell_vol_30s += t["notional"]
-                    else:
-                        buy_vol_30s += t["notional"]
-                    
-                    if age <= 5:
-                        delta_5s += notional_signed
-                        if t["is_sell"]:
-                            sell_notional_5s += t["notional"]
-                
-                # Large sell: single trade above the symbol's size threshold, last 5 minutes
-                if t["is_sell"] and t["notional"] > large_thr:
-                    large_sell_count += 1
-        
+            if age > 300:
+                continue
+            is_sell = t["is_sell"]
+            notional = t["notional"]
+            notional_signed = -notional if is_sell else notional  # sell = negative, buy = positive
+            delta_5m += notional_signed
+
+            if age <= 60:
+                delta_60s += notional_signed
+
+            if age <= 30:
+                delta_30s += notional_signed
+                total_count_30s += 1
+                prices_30s.append(t["price"])
+                if is_sell:
+                    sell_vol_30s += notional
+                else:
+                    buy_vol_30s += notional
+
+                if age <= 5:
+                    delta_5s += notional_signed
+                    if is_sell:
+                        sell_notional_5s += notional
+
+            # Large sell: single trade above the symbol's size threshold, last 5 minutes
+            if is_sell and notional > large_thr:
+                large_sell_count += 1
+
         total_vol_30s = buy_vol_30s + sell_vol_30s
         buy_ratio = buy_vol_30s / total_vol_30s if total_vol_30s > 0 else 0.5
-        
+
         # Avg trade size (for execution intensity calculation)
         avg_trade_size = total_vol_30s / total_count_30s if total_count_30s > 0 else 0.0
-        
+
         # Price change over 30s window (Averaged for smoothness)
-        trades_30s = [t for t in trades if (now - t["ts"]) <= 30]
-        if len(trades_30s) >= 10:
-            price_start = sum(t["price"] for t in trades_30s[:5]) / 5
-            price_end = sum(t["price"] for t in trades_30s[-5:]) / 5
-            price_change_30s = price_end - price_start
-        elif len(trades_30s) >= 2:
-            price_change_30s = trades_30s[-1]["price"] - trades_30s[0]["price"]
+        if len(prices_30s) >= 10:
+            price_change_30s = sum(prices_30s[-5:]) / 5 - sum(prices_30s[:5]) / 5
+        elif len(prices_30s) >= 2:
+            price_change_30s = prices_30s[-1] - prices_30s[0]
         else:
             price_change_30s = 0.0
-            
-        # Price change over 5m window
-        trades_5m = [t for t in trades if (now - t["ts"]) <= 300]
-        if len(trades_5m) >= 2:
-            price_change_5m = trades_5m[-1]["price"] - trades_5m[0]["price"]
-            # Convert to percentage
-            price_change_5m_pct = (price_change_5m / trades_5m[0]["price"]) * 100
-        else:
-            price_change_5m_pct = 0.0
-        
+
         # Price change pct over 30s
-        price_change_30s_pct = (price_change_30s / trades_30s[0]["price"]) * 100 if len(trades_30s) >= 2 and trades_30s[0]["price"] > 0 else 0.0
+        price_change_30s_pct = (price_change_30s / prices_30s[0]) * 100 if len(prices_30s) >= 2 and prices_30s[0] > 0 else 0.0
 
         # ICEBERG DETECTION (Dynamic CVD Divergence)
         # HFT speed detection using 30s delta against price action

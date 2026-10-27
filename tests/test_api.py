@@ -1093,3 +1093,22 @@ def test_book_value_test_finds_planted_signal(tmp_path):
     assert not by[("bid_ask_ratio", "1m")]["consistent"]       # pure noise
     text = sm.book_value_text(res, [{"month": "2026-10", "top5_1m": True}])
     assert "ميزان أول 5 مستويات" in text and "2026-10 ✓" in text
+
+
+def test_wise_interpreter_fed_once_a_second():
+    from app.interpreters.wise_flow_interpreter import get_wise_interpreter
+    wi = get_wise_interpreter()
+    sym = "WISETESTUSDT"
+    wi._history.pop(sym, None)
+    ws_manager._wise_fed.pop(sym, None)
+    for _ in range(10):
+        ws_manager.imbalance.feed(sym, [["100", "5"]] * 5, [["101", "5"]] * 5)
+    now = time.time()
+    for k in range(3):                        # enough trades for a flow reading
+        ws_manager.flow.feed(sym, 100.5, 1, k % 2 == 0, now - 1)
+    for i in range(200):                      # a burst of trades within one second
+        msg = json.dumps({"stream": f"{sym.lower()}@aggTrade",
+                          "data": {"s": sym, "p": "100.5", "q": "1", "m": i % 2 == 0, "T": int((now + i / 1000) * 1000)}})
+        asyncio.run(ws_manager._handle_message(msg))
+    assert len(wi._history.get(sym, [])) == 1
+    assert len(ws_manager.flow._trades[sym]) == 203   # every trade is still counted in the flow

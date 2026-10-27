@@ -19,6 +19,11 @@ from app.interpreters.wise_flow_interpreter import get_wise_interpreter
 
 logger = logging.getLogger("BinanceWS")
 
+# wise_flow_interpreter keeps 60 snapshots meaning ~60 s. Feeding it on every trade made that
+# window a fraction of a second on busy pairs and cost a full CPU core (get_delta over 5,000 trades
+# per trade, profiled 2026-10-27).
+WISE_FEED_INTERVAL_S = 1.0
+
 class BinanceWSManager:
     """Manages WS connections and feeds data to engines"""
     
@@ -34,6 +39,7 @@ class BinanceWSManager:
         
         # Track active subscriptions to avoid spamming
         self._active_subs = set()
+        self._wise_fed: Dict[str, float] = {}  # symbol -> last time the wise interpreter was fed
 
         # Spot symbols currently TRADING on Binance (filled by refresh_market_info_loop).
         # Empty set = not loaded yet; new symbols are refused until it loads.
@@ -107,8 +113,12 @@ class BinanceWSManager:
                 ts = payload.get("T", 0) / 1000.0  # ms to s
                 
                 self.flow.feed(symbol, price, qty, is_buyer_maker, ts)
-                
-                # Feed the Wise Interpreter
+
+                # Feed the Wise Interpreter, once a second per symbol
+                now = time.time()
+                if now - self._wise_fed.get(symbol, 0.0) < WISE_FEED_INTERVAL_S:
+                    return
+                self._wise_fed[symbol] = now
                 try:
                     imb_data = self.imbalance.get_imbalance(symbol)
                     flow_data = self.flow.get_delta(symbol)

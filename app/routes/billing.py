@@ -68,6 +68,12 @@ async def create_checkout_session(request: Request, current_user: dict = Depends
                 "tier": tier
             }
         )
+        from datetime import datetime, timezone
+        from app.redis_client import redis_manager
+        if redis_manager.redis:  # counted for the daily report
+            key = f"horus:api:site:{datetime.now(timezone.utc):%Y-%m-%d}:checkouts"
+            await redis_manager.redis.incr(key)
+            await redis_manager.redis.expire(key, 100 * 86400)
         return {"checkout_url": session.url}
     except Exception as e:
         logger.error(f"Stripe error: {e}")

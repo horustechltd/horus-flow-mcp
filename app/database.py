@@ -227,6 +227,19 @@ def get_daily_usage(api_key: str) -> int:
     conn.close()
     return row["cnt"] if row else 0
 
+def site_funnel(day: str) -> dict:
+    """One UTC day of the site's own funnel: new accounts, free keys that hit their daily limit,
+    and accounts paying now (Stripe subscription on file)."""
+    conn = _get_conn()
+    signups = conn.execute("SELECT COUNT(*) FROM users WHERE substr(created_at, 1, 10) = ?", (day,)).fetchone()[0]
+    capped = conn.execute(
+        "SELECT COUNT(*) FROM (SELECT l.api_key FROM usage_log l JOIN api_keys k ON k.key = l.api_key "
+        "WHERE substr(l.timestamp, 1, 10) = ? GROUP BY l.api_key HAVING COUNT(*) >= MAX(k.daily_limit))", (day,)).fetchone()[0]
+    paying = conn.execute("SELECT COUNT(*) FROM users WHERE stripe_sub_id <> '' AND tier <> 'free'").fetchone()[0]
+    conn.close()
+    return {"signups": signups, "capped_keys": capped, "paying": paying}
+
+
 def get_usage_stats(user_id: int) -> dict:
     conn = _get_conn()
     keys = conn.execute("SELECT key FROM api_keys WHERE user_id = ?", (user_id,)).fetchall()

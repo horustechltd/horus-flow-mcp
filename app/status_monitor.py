@@ -282,6 +282,11 @@ async def _daily_rapidapi_report():
     if loc["hours"]:
         text += f"\nعلى الخادم: آخر {loc['days']} يوم ({loc['mb']} ميجا)"
     text += f"\nالمساحة الفاضية على الخادم: {free_disk_gb():.1f} جيجا"
+    from app.database import site_funnel
+    f = await asyncio.to_thread(site_funnel, yesterday)
+    checkouts = int(await redis_manager.redis.get(f"horus:api:site:{yesterday}:checkouts") or 0)
+    text += (f"\n\nالموقع ليوم {yesterday}: {f['signups']} تسجيل جديد، {f['capped_keys']} مفتاح وصل لحده اليومي، "
+             f"{checkouts} فتحوا صفحة الدفع. المشتركين المدفوعين الآن: {f['paying']}")
     await _send_telegram(text)
 
 

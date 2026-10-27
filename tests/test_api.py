@@ -1030,3 +1030,18 @@ def test_password_reset_link_never_returned(fresh_state, monkeypatch):
 def test_register_rejects_injection_emails():
     for bad in ["x@example.comxsymx7jy')) or 477=(select 477 from pg_sleep(15))--", "x@{#{${dfb}}%>", "a@b"]:
         assert client.post("/api/auth/register", json={"email": bad, "password": "pw-123456"}).status_code == 400
+
+
+def test_site_funnel_counts_capped_keys():
+    from app import database
+    database.init_db()
+    user = database.create_user(f"funnel{time.time()}@example.org", "pw-123456")
+    key = database.generate_api_key(None, user["id"], "free")
+    day = time.strftime("%Y-%m-%d", time.gmtime())
+    before = database.site_funnel(day)
+    conn = database._get_conn()
+    conn.executemany("INSERT INTO usage_log (api_key, endpoint) VALUES (?, ?)", [(key, "/v1/x")] * 100)
+    conn.commit()
+    conn.close()
+    after = database.site_funnel(day)
+    assert after["capped_keys"] == before["capped_keys"] + 1 and after["signups"] >= 1

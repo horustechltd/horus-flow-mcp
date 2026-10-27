@@ -8,8 +8,10 @@ import asyncio
 import json
 import logging
 import shutil
+import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
@@ -247,6 +249,7 @@ async def status_monitor_loop():
             await _alerts(sample)
             await _disk_alert(free_disk_gb())
             await _daily_rapidapi_report()
+            await _monthly_book_value_test()
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -255,6 +258,67 @@ async def status_monitor_loop():
 
 
 REPORT_HOUR_UTC = 6  # 09:00 in Egypt / 15:00 in Japan
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+BOOK_TEST_KEY = "horus:api:bookvalue"
+BOOK_LABELS = {
+    ("top5_imbalance", "1m"): "ميزان أول 5 مستويات ← الدقيقة الجاية",
+    ("top5_imbalance", "5m"): "ميزان أول 5 مستويات ← 5 دقايق",
+    ("bid_ask_ratio", "1m"): "نسبة طلبات الشراء للبيع ← الدقيقة الجاية",
+    ("buy_sell_ratio", "1m"): "نسبة الشراء العنيف ← الدقيقة الجاية",
+    ("delta_30s", "1m"): "صافي الشراء آخر 30 ثانية ← الدقيقة الجاية",
+    ("dir", "5m"): "حكم حورس (الاتجاه) ← 5 دقايق",
+}
+
+
+def book_value_text(res: Dict[str, Any], history: List[Dict[str, Any]]) -> str:
+    """Arabic Telegram summary of one month of app/book_value_test.py."""
+    lines = [f"اختبار قيمة دفتر الأوامر لشهر {res['month']}",
+             f"العينة: {res['snapshots']:,} لقطة (واحدة في الدقيقة لكل عملة)، {res['symbols']} عملة، من {res['start']} إلى {res['end']}", ""]
+    by = {(r["feature"], r["horizon"]): r for r in res.get("results", [])}
+    for key, label in BOOK_LABELS.items():
+        r = by.get(key)
+        if r and r.get("ic_h1") is not None and r.get("ic_h2") is not None:
+            lines.append(f"{label}: {r['ic_h1']:+.3f} / {r['ic_h2']:+.3f} {'✓ ثابت' if r['consistent'] else '✗ مش ثابت'}")
+    n_ok = sum(r["consistent"] for r in res.get("results", []))
+    lines += ["", "الأرقام: الارتباط مع الحركة اللي بعدها في نص الشهر الأول / التاني. "
+                  f"ثابت = نفس الاتجاه وثقة إحصائية في النصين ({n_ok} من {len(res.get('results', []))} مقياس)."]
+    past = [h for h in history if h.get("month") != res["month"]]
+    if past:
+        lines.append("ميزان أول 5 مستويات (الدقيقة) في الشهور اللي فاتت: "
+                     + "، ".join(f"{h['month']} {'✓' if h.get('top5_1m') else '✗'}" for h in past[-6:]))
+    return "\n".join(lines)
+
+
+async def _monthly_book_value_test():
+    """Once a month, test last month's order-book archive in a separate low-priority process and report it."""
+    r = redis_manager.redis
+    now = datetime.now(timezone.utc)
+    if not r or TEST_INSTANCE or now.hour < REPORT_HOUR_UTC:
+        return
+    month = (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    if not await r.set(f"{BOOK_TEST_KEY}:started:{month}", "1", ex=400 * 86400, nx=True):
+        return
+    proc = await asyncio.create_subprocess_exec(
+        "nice", "-n", "19", sys.executable, "-I", str(PROJECT_DIR / "app" / "book_value_test.py"), "--month", month,
+        cwd=str(PROJECT_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
+    except asyncio.TimeoutError:
+        proc.kill()
+        logger.error(f"book value test for {month} timed out")
+        return
+    if proc.returncode != 0:
+        logger.error(f"book value test for {month} failed: {err.decode(errors='replace')[-300:]}")
+        return
+    res = json.loads(out)
+    if not res.get("snapshots"):
+        return  # no archive for that month
+    await r.set(f"{BOOK_TEST_KEY}:{month}", json.dumps(res), ex=400 * 86400)
+    top = next((x for x in res["results"] if x["feature"] == "top5_imbalance" and x["horizon"] == "1m"), {})
+    await r.lpush(f"{BOOK_TEST_KEY}:history", json.dumps({"month": month, "top5_1m": top.get("consistent", False),
+                                                          "consistent": sum(x["consistent"] for x in res["results"])}))
+    history = [json.loads(x) for x in reversed(await r.lrange(f"{BOOK_TEST_KEY}:history", 0, 23))]
+    await _send_telegram(book_value_text(res, history))
 
 
 async def _daily_rapidapi_report():

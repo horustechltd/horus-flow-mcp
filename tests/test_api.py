@@ -940,7 +940,7 @@ def test_archive_hour_writes_each_snapshot_once(fresh_state, tmp_path, monkeypat
 
 def test_archive_upload_marks_and_prunes(fresh_state, tmp_path, monkeypatch):
     monkeypatch.setattr(ha, "ARCHIVE_DIR", tmp_path)
-    for day, hour in (("2026-10-01", "05"), ("2026-10-01", "06"), ("2026-10-23", "05")):
+    for day, hour in (("2026-09-01", "05"), ("2026-09-01", "06"), ("2026-10-23", "05")):
         (tmp_path / day).mkdir(exist_ok=True)
         (tmp_path / day / f"{hour}.jsonl.gz").write_bytes(b"x" * 10)
 
@@ -953,18 +953,18 @@ def test_archive_upload_marks_and_prunes(fresh_state, tmp_path, monkeypatch):
                 raise RuntimeError("network down")
             self.names.append(name)
 
-    flaky = FakeB2(fail_on="flow_history/2026-10-01/06.jsonl.gz")
+    flaky = FakeB2(fail_on="flow_history/2026-09-01/06.jsonl.gz")
     with pytest.raises(RuntimeError):
         asyncio.run(ha.upload_pending(flaky, fresh_state, None))
-    assert flaky.names == ["flow_history/2026-10-01/05.jsonl.gz"]
+    assert flaky.names == ["flow_history/2026-09-01/05.jsonl.gz"]
     now = time.mktime((2026, 10, 24, 12, 0, 0, 0, 0, 0))
     assert ha.prune_local(now) == 1  # only the copied old file goes; the failed one stays
-    assert not (tmp_path / "2026-10-01" / "05.jsonl.gz").exists() and (tmp_path / "2026-10-01" / "06.jsonl.gz").exists()
+    assert not (tmp_path / "2026-09-01" / "05.jsonl.gz").exists() and (tmp_path / "2026-09-01" / "06.jsonl.gz").exists()
     ok = FakeB2()
     assert asyncio.run(ha.upload_pending(ok, fresh_state, None)) == 2  # retries the failed hour, then the new one
-    assert ha.prune_local(now) == 1 and not (tmp_path / "2026-10-01").exists()
+    assert ha.prune_local(now) == 1 and not (tmp_path / "2026-09-01").exists()
     s = asyncio.run(ha.archive_summary(fresh_state))
-    assert s["remote"] == {"hours": 3, "mb": 0.0, "first_day": "2026-10-01"} and s["local"]["hours"] == 1
+    assert s["remote"] == {"hours": 3, "mb": 0.0, "first_day": "2026-09-01"} and s["local"]["hours"] == 1
 
 
 def test_closed_snapshot_days_are_gzipped(tmp_path, monkeypatch):
@@ -1066,3 +1066,30 @@ def test_password_reset_link_goes_by_email(fresh_state, monkeypatch):
     r = client.post("/api/auth/forgot-password", json={"email": email})
     assert r.status_code == 200 and "token=" not in r.text
     assert len(mails) == 1 and mails[0][0] == email and "reset-password.html?token=" in mails[0][1] and alerts == []
+
+
+def test_book_value_test_finds_planted_signal(tmp_path):
+    import gzip, random, subprocess
+    random.seed(7)
+    day = tmp_path / "2026-11-03"
+    day.mkdir()
+    rows, price = [], {"AAAUSDT": 100.0, "BBBUSDT": 50.0}
+    t0 = 1793750400  # 2026-11-03 00:00 UTC
+    for i in range(3000):                       # one snapshot a minute
+        for sym in price:
+            imb = random.uniform(-1, 1)
+            rows.append({"symbol": sym, "_ts": t0 + i * 60, "price": price[sym], "top5_imbalance": imb,
+                         "bid_ask_ratio": random.uniform(0.5, 2), "buy_sell_ratio": random.uniform(0.5, 2),
+                         "delta_30s": random.gauss(0, 1), "direction_bias": random.choice(["BULLISH", "BEARISH", "NEUTRAL"])})
+            price[sym] *= 1 + 0.0004 * imb + random.gauss(0, 0.001)   # the book tilts the next minute
+    with gzip.open(day / "00.jsonl.gz", "wt") as f:
+        f.write("\n".join(json.dumps(r) for r in rows) + "\n")
+    out = subprocess.run([sys.executable, "-I", str(WORK / "app" / "book_value_test.py"), "--month", "2026-11", "--dir", str(tmp_path)],
+                         capture_output=True, text=True, check=True).stdout
+    res = json.loads(out)
+    by = {(r["feature"], r["horizon"]): r for r in res["results"]}
+    assert res["snapshots"] == 6000 and res["symbols"] == 2
+    assert by[("top5_imbalance", "1m")]["consistent"] and by[("top5_imbalance", "1m")]["ic_h1"] > 0.1
+    assert not by[("bid_ask_ratio", "1m")]["consistent"]       # pure noise
+    text = sm.book_value_text(res, [{"month": "2026-10", "top5_1m": True}])
+    assert "ميزان أول 5 مستويات" in text and "2026-10 ✓" in text

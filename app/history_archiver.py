@@ -41,7 +41,7 @@ ARCHIVE_DIR = Path(os.getenv("HORUS_ARCHIVE_DIR", "calibration_data/flow_history
 CHECK_INTERVAL = 300
 KEY_LAST_HOUR = "horus:api:archive:last_hour"  # epoch of the start of the last archived hour
 KEY_REMOTE = "horus:api:archive:remote"  # hash: hours, bytes, first_day copied to B2
-LOCAL_KEEP_DAYS = 7
+LOCAL_KEEP_DAYS = 40  # a full month stays local for the monthly order-book test (~3 MB a day)
 SNAPSHOT_DIR = Path(os.getenv("HORUS_SNAPSHOT_DIR", "calibration_data/raw_snapshots"))
 B2_API = "https://api.backblazeb2.com/b2api/v2"
 

@@ -1005,3 +1005,28 @@ def test_daily_quota_message_says_when_and_what_next(fresh_state):
     assert r.status_code == 429 and d["error"] == "daily_quota_exceeded" and d["daily_limit"] == 100
     assert d["required_plan"] == "TRADER" and "1,000 calls a day" in d["message"] and d["subscribe"].endswith("#pricing")
     assert 0 < int(r.headers["Retry-After"]) <= 86400 and d["resets_at_utc"].endswith("T00:00:00+00:00")
+
+
+def test_password_reset_link_never_returned(fresh_state, monkeypatch):
+    from app import database
+    from app import status_monitor as smod
+    database.init_db()
+    email = f"reset{int(time.time() * 1000)}@example.org"
+    database.create_user(email, "pw-123456")
+    sent = []
+
+    async def fake_send(text):
+        sent.append(text)
+    monkeypatch.setattr(smod, "_send_telegram", fake_send)
+    r = client.post("/api/auth/forgot-password", json={"email": email})
+    assert r.status_code == 200 and "reset_url" not in r.json() and "token=" not in r.text
+    assert len(sent) == 1 and email in sent[0] and "reset-password.html?token=" in sent[0]
+    client.post("/api/auth/forgot-password", json={"email": email})
+    assert len(sent) == 1  # one link an hour per account
+    unknown = client.post("/api/auth/forgot-password", json={"email": "nobody@example.org"})
+    assert unknown.json() == r.json()  # same answer whether the account exists or not
+
+
+def test_register_rejects_injection_emails():
+    for bad in ["x@example.comxsymx7jy')) or 477=(select 477 from pg_sleep(15))--", "x@{#{${dfb}}%>", "a@b"]:
+        assert client.post("/api/auth/register", json={"email": bad, "password": "pw-123456"}).status_code == 400

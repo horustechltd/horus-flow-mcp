@@ -3,9 +3,11 @@
 Horus Flow — Auth Routes (Register, Login, Me, Logout)
 """
 import os
+import re
 import jwt
 import time
 import logging
+import secrets
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from fastapi.responses import JSONResponse
@@ -24,7 +26,11 @@ logger = logging.getLogger("Auth")
 
 router_auth = APIRouter()
 
-JWT_SECRET = os.getenv("JWT_SECRET", "horus-jwt-secret-change-in-production-2026")
+# Never a default: a secret written in the (public) code lets anyone sign a login for any user, admin included.
+JWT_SECRET = os.getenv("JWT_SECRET") or secrets.token_urlsafe(48)
+if not os.getenv("JWT_SECRET"):
+    logger.error("JWT_SECRET is not set: using a random secret for this process; every login ends at restart.")
+EMAIL_RE = re.compile(r"^[^@\s'\"<>(){}\[\];,\\]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 72  # 3 days
 
@@ -124,7 +130,7 @@ async def register(req: RegisterRequest, request: Request):
     """Create a new account. Returns JWT token + API key."""
     email = req.email.strip().lower()
     
-    if not email or "@" not in email:
+    if not email or len(email) > 254 or not EMAIL_RE.match(email):
         raise HTTPException(status_code=400, detail="Invalid email address.")
     if len(req.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
@@ -262,26 +268,28 @@ def _create_reset_token(user_id: int, email: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+RESET_SENT_MESSAGE = "If that email is registered, we will email you a reset link shortly."
+
+
 @router_auth.post("/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest):
-    """Generate a password reset link. Returns the link directly (no email sending)."""
+    """Request a password reset link. The link never goes back in the response (anyone could then take over
+    any account by its email): there is no mail sender yet, so it goes to the owner's ops Telegram to forward."""
+    from app.redis_client import redis_manager
+    from app.status_monitor import _send_telegram
     email = req.email.strip().lower()
     user = get_user_by_email(email)
-    
     if not user:
-        # Don't reveal if email exists or not
-        return {"message": "If that email is registered, a reset link has been generated.", "reset_url": None}
-    
+        return {"message": RESET_SENT_MESSAGE}
+    r = redis_manager.redis
+    if r and not await r.set(f"horus:api:pwreset:{user['id']}", "1", ex=3600, nx=True):
+        return {"message": RESET_SENT_MESSAGE}  # one link an hour per account
     token = _create_reset_token(user["id"], user["email"])
     site_url = os.getenv("SITE_URL", "https://flow.horustek.pro")
-    reset_url = f"{site_url}/reset-password.html?token={token}"
-    
-    logger.info(f"🔑 Password reset requested for: {email}")
-    
-    return {
-        "message": "If that email is registered, a reset link has been generated.",
-        "reset_url": reset_url
-    }
+    logger.info(f"🔑 Password reset requested for user {user['id']}")
+    await _send_telegram(f"طلب تغيير كلمة سر من {user['email']} (صالح 30 دقيقة). ابعت له الرابط ده:\n"
+                         f"{site_url}/reset-password.html?token={token}")
+    return {"message": RESET_SENT_MESSAGE}
 
 @router_auth.post("/reset-password")
 async def reset_password(req: ResetPasswordRequest):

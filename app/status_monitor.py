@@ -57,6 +57,8 @@ COMPONENTS: List[Dict[str, Any]] = [
      "endpoints": ["/v1/events", "/v1/events/stream", "/v1/webhooks"]},
     {"name": "market_scanner", "label": "Market scanner (Binance perpetuals)", "max_age": 300,
      "endpoints": ["/v1/scan"]},
+    {"name": "book_recorder", "label": "Order-book recorder (30 Binance spot pairs)", "max_age": 120,
+     "endpoints": []},
     {"name": "track_record", "label": "Live signal track record", "max_age": 3600,
      "endpoints": ["/v1/track-record", "/v1/track-record/signals"]},
 ]
@@ -118,6 +120,7 @@ async def _age(name: str) -> Optional[float]:
     key = {"derivatives_publisher": KEY_PUBLISHER_HEARTBEAT,
            "event_detector": "horus:api:events:heartbeat",
            "market_scanner": "horus:api:scanner:heartbeat",
+           "book_recorder": "horus:api:book_recorder:heartbeat",
            "wiseman_climate": "hta:state:wiseman_climate",
            "ignition_scanner": "horus:global_ignition_state",
            "cortex": "horus:maestro:state"}.get(name)
@@ -300,19 +303,26 @@ async def _monthly_book_value_test():
     month = (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
     if not await r.set(f"{BOOK_TEST_KEY}:started:{month}", "1", ex=400 * 86400, nx=True):
         return
-    proc = await asyncio.create_subprocess_exec(
-        "nice", "-n", "19", sys.executable, "-I", str(PROJECT_DIR / "app" / "book_value_test.py"), "--month", month,
-        cwd=str(PROJECT_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-    try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
-    except asyncio.TimeoutError:
-        proc.kill()
-        logger.error(f"book value test for {month} timed out")
-        return
-    if proc.returncode != 0:
-        logger.error(f"book value test for {month} failed: {err.decode(errors='replace')[-300:]}")
-        return
-    res = json.loads(out)
+    res = {}
+    # the 30-pair book recorder's archive when it covers the month, else the API's own flow history
+    for folder in ("book_history", "flow_history"):
+        proc = await asyncio.create_subprocess_exec(
+            "nice", "-n", "19", sys.executable, "-I", str(PROJECT_DIR / "app" / "book_value_test.py"), "--month", month,
+            "--dir", str(PROJECT_DIR / "calibration_data" / folder),
+            cwd=str(PROJECT_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        try:
+            out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
+        except asyncio.TimeoutError:
+            proc.kill()
+            logger.error(f"book value test for {month} ({folder}) timed out")
+            return
+        if proc.returncode != 0:
+            logger.error(f"book value test for {month} ({folder}) failed: {err.decode(errors='replace')[-300:]}")
+            return
+        res = json.loads(out)
+        if res.get("snapshots"):
+            res["source"] = folder
+            break
     if not res.get("snapshots"):
         return  # no archive for that month
     await r.set(f"{BOOK_TEST_KEY}:{month}", json.dumps(res), ex=400 * 86400)

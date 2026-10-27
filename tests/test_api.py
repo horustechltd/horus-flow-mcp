@@ -1112,3 +1112,27 @@ def test_wise_interpreter_fed_once_a_second():
         asyncio.run(ws_manager._handle_message(msg))
     assert len(wi._history.get(sym, [])) == 1
     assert len(ws_manager.flow._trades[sym]) == 203   # every trade is still counted in the flow
+
+
+def test_book_recorder_rows_and_hour_files(tmp_path):
+    import gzip
+    from app import book_recorder as br
+    rec = br.BookRecorder(symbols=["AAAUSDT", "BBBUSDT"], base=tmp_path)
+    now = time.time()
+    book = {"bids": [["100", "5"]] * 20, "asks": [["101", "2"]] * 20}
+    for _ in range(3):
+        rec.handle(json.dumps({"stream": "aaausdt@depth20@100ms", "data": book}))
+    for i in range(5):
+        rec.handle(json.dumps({"stream": "aaausdt@aggTrade",
+                               "data": {"p": "100.5", "q": "1", "m": i % 2 == 0, "T": int((now - 1) * 1000)}}))
+    rows = br.build_rows(rec.imbalance, rec.flow, rec.symbols, rec.book_seen, now)
+    assert [r["symbol"] for r in rows] == ["AAAUSDT"]            # BBB has no live book: not written
+    r = rows[0]
+    assert r["top5_imbalance"] == round(10 / 14, 4) and r["bid_ask_ratio"] == 2.5 and r["price"] == 100.5
+    hour_ago = now - 3600
+    br.append_rows(tmp_path, rows, hour_ago)
+    br.append_rows(tmp_path, rows, now)
+    assert br.close_hours(tmp_path, now) == 1                     # only the closed hour is compressed
+    closed = br.hour_file(tmp_path, hour_ago)
+    assert not closed.exists() and json.loads(gzip.open(str(closed) + ".gz", "rt").readline())["symbol"] == "AAAUSDT"
+    assert br.hour_file(tmp_path, now).exists()

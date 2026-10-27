@@ -43,6 +43,8 @@ KEY_LAST_HOUR = "horus:api:archive:last_hour"  # epoch of the start of the last 
 KEY_REMOTE = "horus:api:archive:remote"  # hash: hours, bytes, first_day copied to B2
 LOCAL_KEEP_DAYS = 40  # a full month stays local for the monthly order-book test (~3 MB a day)
 SNAPSHOT_DIR = Path(os.getenv("HORUS_SNAPSHOT_DIR", "calibration_data/raw_snapshots"))
+BOOK_DIR = Path(os.getenv("HORUS_BOOK_DIR", "calibration_data/book_history"))  # written by app/book_recorder.py
+KEY_REMOTE_BOOK = "horus:api:archive:remote_book"
 B2_API = "https://api.backblazeb2.com/b2api/v2"
 
 
@@ -125,15 +127,16 @@ async def _copy(client, session, path: Path, name: str) -> int:
     return len(data)
 
 
-async def upload_pending(client, redis, session: aiohttp.ClientSession) -> int:
+async def upload_pending(client, redis, session: aiohttp.ClientSession, base: Path = None,
+                         prefix: str = "flow_history", stats_key: str = KEY_REMOTE) -> int:
     """Copy every archived hour without a .up marker, oldest first. Returns how many were copied."""
     done = 0
-    for path in sorted(p for p in ARCHIVE_DIR.glob("*/*.jsonl.gz") if not _marker(p).exists()):
-        size = await _copy(client, session, path, f"flow_history/{path.parent.name}/{path.name}")
-        await redis.hincrby(KEY_REMOTE, "hours", 1)
-        await redis.hincrby(KEY_REMOTE, "bytes", size)
-        if not await redis.hget(KEY_REMOTE, "first_day"):
-            await redis.hset(KEY_REMOTE, "first_day", path.parent.name)
+    for path in sorted(p for p in (base or ARCHIVE_DIR).glob("*/*.jsonl.gz") if not _marker(p).exists()):
+        size = await _copy(client, session, path, f"{prefix}/{path.parent.name}/{path.name}")
+        await redis.hincrby(stats_key, "hours", 1)
+        await redis.hincrby(stats_key, "bytes", size)
+        if not await redis.hget(stats_key, "first_day"):
+            await redis.hset(stats_key, "first_day", path.parent.name)
         done += 1
     return done
 
@@ -170,16 +173,17 @@ async def upload_snapshots(client, session: aiohttp.ClientSession) -> int:
     return done
 
 
-def prune_local(now: float = None) -> int:
+def prune_local(now: float = None, base: Path = None) -> int:
     """Delete copied files older than LOCAL_KEEP_DAYS. Files never copied stay."""
+    base = base or ARCHIVE_DIR
     cutoff = (datetime.fromtimestamp(now or time.time(), timezone.utc).date() - timedelta(days=LOCAL_KEEP_DAYS)).isoformat()
     removed = 0
-    for path in ARCHIVE_DIR.glob("*/*.jsonl.gz"):
+    for path in base.glob("*/*.jsonl.gz"):
         if path.parent.name < cutoff and _marker(path).exists():
             path.unlink()
             _marker(path).unlink()
             removed += 1
-    for d in ARCHIVE_DIR.glob("*"):
+    for d in base.glob("*"):
         if d.is_dir() and not any(d.iterdir()):
             d.rmdir()
     return removed
@@ -220,10 +224,12 @@ async def archiver_loop():
                 if b2:
                     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300)) as s:
                         copied = await upload_pending(b2, r, s)
+                        books = await upload_pending(b2, r, s, BOOK_DIR, "book_history", KEY_REMOTE_BOOK)
                         snaps = await upload_snapshots(b2, s)
-                    if copied or snaps:
-                        logger.info(f"copied {copied} archive hours and {snaps} snapshot days to B2 bucket {B2_BUCKET}")
+                    if copied or books or snaps:
+                        logger.info(f"copied {copied} flow hours, {books} book hours and {snaps} snapshot days to B2 bucket {B2_BUCKET}")
                     await asyncio.to_thread(prune_local)
+                    await asyncio.to_thread(prune_local, None, BOOK_DIR)
         except asyncio.CancelledError:
             raise
         except Exception as e:

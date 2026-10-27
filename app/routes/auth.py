@@ -274,7 +274,9 @@ RESET_SENT_MESSAGE = "If that email is registered, we will email you a reset lin
 @router_auth.post("/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest):
     """Request a password reset link. The link never goes back in the response (anyone could then take over
-    any account by its email): there is no mail sender yet, so it goes to the owner's ops Telegram to forward."""
+    any account by its email): it is emailed to the account, or, when mail fails, sent to the owner's ops
+    Telegram to forward."""
+    from app import mailer
     from app.redis_client import redis_manager
     from app.status_monitor import _send_telegram
     email = req.email.strip().lower()
@@ -286,9 +288,15 @@ async def forgot_password(req: ForgotPasswordRequest):
         return {"message": RESET_SENT_MESSAGE}  # one link an hour per account
     token = _create_reset_token(user["id"], user["email"])
     site_url = os.getenv("SITE_URL", "https://flow.horustek.pro")
+    link = f"{site_url}/reset-password.html?token={token}"
     logger.info(f"🔑 Password reset requested for user {user['id']}")
-    await _send_telegram(f"طلب تغيير كلمة سر من {user['email']} (صالح 30 دقيقة). ابعت له الرابط ده:\n"
-                         f"{site_url}/reset-password.html?token={token}")
+    sent = await mailer.send_mail(
+        user["email"], "Reset your Horus Flow password",
+        f"Someone asked to reset the password of your Horus Flow account ({user['email']}).\n\n"
+        f"Open this link within {RESET_JWT_EXPIRE_MINUTES} minutes to choose a new password:\n{link}\n\n"
+        "If it was not you, ignore this email: your password stays the same.\n\nHorus Flow\nhttps://flow.horustek.pro\n")
+    if not sent:
+        await _send_telegram(f"طلب تغيير كلمة سر من {user['email']} والإيميل ما اتبعتش (صالح 30 دقيقة). ابعت له الرابط ده:\n{link}")
     return {"message": RESET_SENT_MESSAGE}
 
 @router_auth.post("/reset-password")

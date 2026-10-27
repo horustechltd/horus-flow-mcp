@@ -1020,7 +1020,7 @@ def test_password_reset_link_never_returned(fresh_state, monkeypatch):
     monkeypatch.setattr(smod, "_send_telegram", fake_send)
     r = client.post("/api/auth/forgot-password", json={"email": email})
     assert r.status_code == 200 and "reset_url" not in r.json() and "token=" not in r.text
-    assert len(sent) == 1 and email in sent[0] and "reset-password.html?token=" in sent[0]
+    assert len(sent) == 1 and email in sent[0] and "reset-password.html?token=" in sent[0]  # no mail on a test instance
     client.post("/api/auth/forgot-password", json={"email": email})
     assert len(sent) == 1  # one link an hour per account
     unknown = client.post("/api/auth/forgot-password", json={"email": "nobody@example.org"})
@@ -1045,3 +1045,24 @@ def test_site_funnel_counts_capped_keys():
     conn.close()
     after = database.site_funnel(day)
     assert after["capped_keys"] == before["capped_keys"] + 1 and after["signups"] >= 1
+
+
+def test_password_reset_link_goes_by_email(fresh_state, monkeypatch):
+    from app import database, mailer
+    from app import status_monitor as smod
+    database.init_db()
+    email = f"mail{int(time.time() * 1000)}@example.org"
+    database.create_user(email, "pw-123456")
+    mails, alerts = [], []
+
+    async def fake_mail(to, subject, text):
+        mails.append((to, text))
+        return True
+
+    async def fake_send(text):
+        alerts.append(text)
+    monkeypatch.setattr(mailer, "send_mail", fake_mail)
+    monkeypatch.setattr(smod, "_send_telegram", fake_send)
+    r = client.post("/api/auth/forgot-password", json={"email": email})
+    assert r.status_code == 200 and "token=" not in r.text
+    assert len(mails) == 1 and mails[0][0] == email and "reset-password.html?token=" in mails[0][1] and alerts == []

@@ -255,6 +255,7 @@ async def status_monitor_loop():
             await _disk_alert(free_disk_gb())
             await _daily_rapidapi_report()
             await _monthly_book_value_test()
+            await _daily_book_measure()
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -294,6 +295,43 @@ def book_value_text(res: Dict[str, Any], history: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+BOOK_ROLLING_KEY = f"{BOOK_TEST_KEY}:rolling"  # last 30 days, shown live by /v1/book/pressure
+_rolling_at = 0.0
+
+
+async def _book_test(args: List[str], folder: str) -> Optional[Dict[str, Any]]:
+    """Run app/book_value_test.py on one archive folder in its own low-priority process."""
+    proc = await asyncio.create_subprocess_exec(
+        "nice", "-n", "19", sys.executable, "-I", str(PROJECT_DIR / "app" / "book_value_test.py"), *args,
+        "--dir", str(PROJECT_DIR / "calibration_data" / folder),
+        cwd=str(PROJECT_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
+    except asyncio.TimeoutError:
+        proc.kill()
+        logger.error(f"book value test {args} ({folder}) timed out")
+        return None
+    if proc.returncode != 0:
+        logger.error(f"book value test {args} ({folder}) failed: {err.decode(errors='replace')[-300:]}")
+        return None
+    res = json.loads(out)
+    res["source"] = folder
+    return res if res.get("snapshots") else None
+
+
+async def _daily_book_measure():
+    """At start and then every 24 h: the last 30 days, on whichever archive holds more of them."""
+    global _rolling_at
+    r = redis_manager.redis
+    if not r or TEST_INSTANCE or time.time() - _rolling_at < 86400:
+        return
+    _rolling_at = time.time()
+    found = [x for x in [await _book_test(["--days", "30"], f) for f in ("book_history", "flow_history")] if x]
+    if found:
+        best = max(found, key=lambda x: x["snapshots"])
+        await r.set(BOOK_ROLLING_KEY, json.dumps(best | {"computed_at": time.time()}))
+
+
 async def _monthly_book_value_test():
     """Once a month, test last month's order-book archive in a separate low-priority process and report it."""
     r = redis_manager.redis
@@ -303,27 +341,9 @@ async def _monthly_book_value_test():
     month = (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
     if not await r.set(f"{BOOK_TEST_KEY}:started:{month}", "1", ex=400 * 86400, nx=True):
         return
-    res = {}
     # the 30-pair book recorder's archive when it covers the month, else the API's own flow history
-    for folder in ("book_history", "flow_history"):
-        proc = await asyncio.create_subprocess_exec(
-            "nice", "-n", "19", sys.executable, "-I", str(PROJECT_DIR / "app" / "book_value_test.py"), "--month", month,
-            "--dir", str(PROJECT_DIR / "calibration_data" / folder),
-            cwd=str(PROJECT_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        try:
-            out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
-        except asyncio.TimeoutError:
-            proc.kill()
-            logger.error(f"book value test for {month} ({folder}) timed out")
-            return
-        if proc.returncode != 0:
-            logger.error(f"book value test for {month} ({folder}) failed: {err.decode(errors='replace')[-300:]}")
-            return
-        res = json.loads(out)
-        if res.get("snapshots"):
-            res["source"] = folder
-            break
-    if not res.get("snapshots"):
+    res = await _book_test(["--month", month], "book_history") or await _book_test(["--month", month], "flow_history")
+    if not res:
         return  # no archive for that month
     await r.set(f"{BOOK_TEST_KEY}:{month}", json.dumps(res), ex=400 * 86400)
     top = next((x for x in res["results"] if x["feature"] == "top5_imbalance" and x["horizon"] == "1m"), {})

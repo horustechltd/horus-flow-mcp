@@ -10,6 +10,7 @@
 - Status: https://flow.horustek.pro/v1/status
 
 ## What it provides
+- Order-book pressure: the spot book of 30 deep Binance pairs in one call, refreshed every 15 s, with the measured rank correlation of book imbalance with the next minute over the last 30 days (GET /v1/book/pressure, MCP tool get_book_pressure).
 - Market scanner: about 250 Binance perpetuals ranked in one call by aggressive buying or selling, volume surge, breakout conditions or funding (GET /v1/scan, MCP tool scan_market).
 - Order flow for any Binance spot pair: 5s and 30s aggressive buy/sell delta in USD, top-20 order book depth ratio, large trades relative to the pair's 24h volume.
 - Derivatives for 10 majors (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, LINK, SUI): funding and open interest across Binance, Bybit and OKX; futures/spot volume vs its 7-day median; crowd long/short vs its 24h median; estimated liquidation levels; liquidations seen in the last 5 minutes.
@@ -25,7 +26,7 @@
 - Full numbers: https://flow.horustek.pro/v1/track-record ; per-signal ledger for backtests: /v1/track-record/signals
 
 ## Free tier
-Order flow for any Binance spot pair, track record, US session and halts, first 3 scanner results, service status.
+Order flow for any Binance spot pair, track record, US session and halts, first 3 scanner results, first 3 order-book pressure rows, service status.
 
 ## Not financial advice
 Horus Flow provides market data and measured statistics. It does not manage money or give personalized advice.

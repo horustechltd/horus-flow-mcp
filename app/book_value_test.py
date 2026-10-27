@@ -8,14 +8,17 @@ that followed (1, 5 and 15 minutes), on non-overlapping samples, separately in e
 A field counts only when both halves agree in sign with |t| >= 2. Each month is a fresh out-of-sample
 check; first result (2026-10-23..27): top5_imbalance IC ~0.07 at 1 minute, Horus's direction label none.
 
-Run by the status monitor once a month in its own low-priority process:
+Run by the status monitor in its own low-priority process: once a month for the month before, and once a
+day for the last 30 days (the figure shown live by /v1/book/pressure):
     python3 -I app/book_value_test.py --month 2026-10 [--dir calibration_data/flow_history]
+    python3 -I app/book_value_test.py --days 30 [--dir calibration_data/book_history]
 """
 import argparse
 import glob
 import gzip
 import json
 import os
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -27,9 +30,20 @@ MIN_SAMPLES = 100
 
 
 def load_month(base: str, month: str) -> pd.DataFrame:
+    return load_files(sorted(glob.glob(os.path.join(base, f"{month}-*", "*.jsonl.gz"))))
+
+
+def load_days(base: str, days: int) -> pd.DataFrame:
+    today = datetime.now(timezone.utc).date()
+    dates = {(today - timedelta(days=i)).isoformat() for i in range(days)}
+    return load_files(sorted(p for p in glob.glob(os.path.join(base, "*", "*.jsonl.gz"))
+                             if os.path.basename(os.path.dirname(p)) in dates))
+
+
+def load_files(paths: list) -> pd.DataFrame:
     """First snapshot of each symbol in each minute (prices every minute are enough for 1-15 minute returns)."""
     keep = {}
-    for path in sorted(glob.glob(os.path.join(base, f"{month}-*", "*.jsonl.gz"))):
+    for path in paths:
         with gzip.open(path, "rt") as f:
             for line in f:
                 d = json.loads(line)
@@ -80,12 +94,14 @@ def evaluate(df: pd.DataFrame) -> list:
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--month", required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--month")
+    g.add_argument("--days", type=int)
     p.add_argument("--dir", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                                  "calibration_data", "flow_history"))
     a = p.parse_args()
-    df = load_month(a.dir, a.month)
-    res = {"month": a.month, "snapshots": int(len(df)), "symbols": int(df["symbol"].nunique()) if len(df) else 0}
+    df = load_month(a.dir, a.month) if a.month else load_days(a.dir, a.days)
+    res = {"month": a.month or f"last {a.days} days", "snapshots": int(len(df)), "symbols": int(df["symbol"].nunique()) if len(df) else 0}
     if len(df):
         res["start"] = pd.to_datetime(df["_ts"].min(), unit="s", utc=True).strftime("%Y-%m-%d")
         res["end"] = pd.to_datetime(df["_ts"].max(), unit="s", utc=True).strftime("%Y-%m-%d")

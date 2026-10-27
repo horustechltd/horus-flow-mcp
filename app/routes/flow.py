@@ -7,7 +7,15 @@ from fastapi.responses import JSONResponse
 
 from app.auth import verify_api_key, tier_or_preview, tier_level, plan_name, upgrade_block, upgrade_required
 from app.config import FREE_TIER_SYMBOLS
-from app import track_record
+from app import book_measure, track_record
+
+
+def _book_link(measured):
+    """Average rank correlation of top5_imbalance with the next minute, when both halves agree; else None."""
+    if not measured or not measured.get("consistent"):
+        return None
+    rc = measured["rank_correlation"]
+    return round((rc["first_half"] + rc["second_half"]) / 2, 3)
 
 
 def compact_flow(doc: dict) -> dict:
@@ -28,6 +36,9 @@ def compact_flow(doc: dict) -> dict:
         "large_sells_5m": m.get("large_sell_count"),
         "hit_rate_5m": (rel.get("hit_rate") or {}).get("5m"),
         "reliability": rel.get("interpretation") or rel.get("note"),
+        "top5_imbalance": m.get("top5_imbalance"),
+        "book_tilt": (doc.get("book_information") or {}).get("book_tilt"),
+        "book_link_1m": _book_link((doc.get("book_information") or {}).get("measured")),
         "freshness_ms": doc.get("freshness_ms"),
         "timestamp_utc": doc.get("timestamp_utc"),
     }
@@ -219,6 +230,10 @@ async def build_flow_response(clean_symbol: str, update_oscillation: bool = True
     response_data["metrics"]["price"] = ws_manager.flow.last_price(clean_symbol)
     response_data["reliability"] = track_record.reliability_for(
         response_data["signal"], clean_symbol, response_data["confidence"], response_data["direction_bias"])
+    top5 = response_data["metrics"].get("top5_imbalance")
+    if top5 is not None:
+        response_data["book_information"] = {"top5_imbalance": top5, "book_tilt": book_measure.tilt(top5),
+                                             "measured": await book_measure.current_measure(redis_manager.redis)}
     return response_data
 
 

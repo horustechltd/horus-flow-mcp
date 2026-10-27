@@ -50,6 +50,8 @@ INSTRUCTIONS = """Horus Flow gives you live crypto market microstructure and US 
 
 How to use it well:
 - To find where to look, call scan_market (about 190 markets ranked by buyers, sellers, volume surge, breakouts).
+- For what the spot order book says right now across 30 majors, call get_book_pressure. It carries the
+  measured link between book imbalance and the next minute, so you know how much weight it deserves.
 - Start with get_market_overview for BTC, ETH and 8 other majors, or get_crypto_flow for one pair.
 - Every directional reading carries `reliability`: its measured hit rate from the live track record.
   Many signals score close to 50%, a coin flip. Treat them as context for your own reasoning, never as
@@ -280,6 +282,19 @@ async def scan_market(preset: str = "buyers_in_control", limit: int = 10, min_vo
     Rankings of current conditions, not predictions. Free plans: 3 rows; TRADER / RapidAPI PRO and above: up to 100."""
     r = await _get(ctx, "/v1/scan", {"preset": preset, "limit": max(1, min(limit, 50)), "min_volume_24h": min_volume_24h_usd})
     return {k: r[k] for k in ("preset", "criteria", "coverage", "count", "results", "note", "upgrade") if k in r}
+
+
+@mcp.tool(annotations=RO, structured_output=True)
+async def get_book_pressure(sort: str = "bid", limit: int = 10, ctx: Context = None) -> dict[str, Any]:
+    """Read the spot order book of 30 deep Binance USDT pairs in one call, refreshed every 15 seconds:
+    the share of the top five levels' size on the bid side (top5_imbalance, 0.5 = even), the bid/ask size ratio
+    and the last 30 seconds of taker flow. sort=bid lists the most bid-heavy books first, sort=ask the most
+    ask-heavy. 'measured' gives the rank correlation of top5_imbalance with the next minute's return over the last
+    30 days: a small, steady tilt below trading costs, useful as context or for timing an order, not as a signal.
+    An agent cannot hold Binance's live streams; this is the book in one request. Free plans: 3 rows; TRADER /
+    RapidAPI PRO and above: all 30."""
+    r = await _get(ctx, "/v1/book/pressure", {"sort": sort if sort in ("bid", "ask") else "bid", "limit": max(1, min(limit, 30))})
+    return {k: r[k] for k in ("generated_at", "data_age_seconds", "sort", "count", "rows", "measured", "note", "upgrade") if k in r}
 
 
 @mcp.tool(annotations=RO, structured_output=True)

@@ -3,7 +3,7 @@
   "info": {
     "title": "Horus Flow Intelligence",
     "version": "3.1.0",
-    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nMarket scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) order flow for any pair, track record, US session, first 3 scanner results. PRO adds the full scanner, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks. Paid endpoints answer lower plans with a live preview (for example BTCUSDT only, or the top 3) and an `upgrade` block that says what the next plan unlocks, so you can try every endpoint before you subscribe.\n\nMarket data, not financial advice.",
+    "description": "Live crypto order flow, cross-venue derivatives (Binance, Bybit, OKX) and US market session context, built for AI agents and trading bots. Every directional signal ships with its measured hit rate, and stale data is refused with HTTP 503 instead of being served.\n\nUse your RapidAPI key in Claude, Cursor or any MCP client: add the remote MCP server https://flow.horustek.pro/mcp with the header X-RapidAPI-Key. Your plan applies.\n\nOrder-book pressure: the spot book of 30 pairs in one call, with its measured link to the next minute (/v1/book/pressure).  Market scanner: rank about 250 Binance perpetuals in one call (buyers in control, volume surge, breakout candidates).\n\nPlans: BASIC (free) order flow for any pair, track record, US session, first 3 scanner results. PRO adds the full scanner, history, climate, breakout scanner, US equity flow, events and cross-asset. ULTRA and MEGA add Cortex, derivatives, composite, market overview, 24h history and webhooks. Paid endpoints answer lower plans with a live preview (for example BTCUSDT only, or the top 3) and an `upgrade` block that says what the next plan unlocks, so you can try every endpoint before you subscribe.\n\nMarket data, not financial advice.",
     "contact": {
       "name": "Horus Tech Ltd",
       "email": "admin@horustek.pro",
@@ -3139,6 +3139,182 @@
                   },
                   "note": "Rankings of current conditions, not predictions. Picks are recorded so their accuracy can be published later.",
                   "data_source": "Binance USDT-margined perpetuals, 5-minute candles"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Scanner warming up after a restart",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": {
+                    "error": "data_unavailable"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/book/pressure": {
+      "get": {
+        "tags": [
+          "Crypto Order Flow"
+        ],
+        "summary": "Order-book pressure across 30 pairs",
+        "operationId": "book_pressure",
+        "description": "What the spot order book says right now across 30 deep Binance USDT pairs, in one call, refreshed every 15 seconds: the share of the top five levels' size on the bid side, the bid/ask size ratio and the last 30 seconds of taker flow, ranked bid-heavy first (or ask-heavy with sort=ask). The 'measured' block gives the rank correlation of top5_imbalance with the next minute's return over the last 30 days, in each half of the window: a small, steady tilt below trading costs, useful as context or to time an order, not a trading signal. Built for AI agents, which cannot hold Binance's live streams.\n\nPlans: BASIC (free) returns the first 3 pairs; PRO, ULTRA and MEGA return all 30.",
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "bid = most bid-heavy books first; ask = most ask-heavy first",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bid",
+                "ask"
+              ],
+              "default": "bid"
+            },
+            "example": "bid"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum rows",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pairs ranked by book tilt, with the measured link to the next minute",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "generated_at": {
+                      "type": "string"
+                    },
+                    "data_age_seconds": {
+                      "type": "number"
+                    },
+                    "pairs_recorded": {
+                      "type": "integer"
+                    },
+                    "sort": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string",
+                            "example": "BTCUSDT"
+                          },
+                          "price": {
+                            "type": "number"
+                          },
+                          "top5_imbalance": {
+                            "type": "number",
+                            "description": "share of the top five levels' size on the bid side (0.5 = even)"
+                          },
+                          "book_tilt": {
+                            "type": "string",
+                            "enum": [
+                              "BID_HEAVY",
+                              "BALANCED",
+                              "ASK_HEAVY"
+                            ]
+                          },
+                          "bid_ask_ratio": {
+                            "type": "number"
+                          },
+                          "spread_pct": {
+                            "type": "number"
+                          },
+                          "buy_sell_ratio_30s": {
+                            "type": "number"
+                          },
+                          "net_taker_flow_30s_usd": {
+                            "type": "number"
+                          },
+                          "trades_30s": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "measured": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "horizon": {
+                          "type": "string"
+                        },
+                        "rank_correlation": {
+                          "type": "object",
+                          "properties": {
+                            "first_half": {
+                              "type": "number"
+                            },
+                            "second_half": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "consistent": {
+                          "type": "boolean"
+                        },
+                        "samples": {
+                          "type": "integer"
+                        },
+                        "pairs": {
+                          "type": "integer"
+                        },
+                        "window": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string"
+                        },
+                        "meaning": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "fields": {
+                      "type": "object"
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "data_source": {
+                      "type": "string"
+                    },
+                    "upgrade": {
+                      "type": "object",
+                      "description": "present on free plans"
+                    }
+                  }
                 }
               }
             }

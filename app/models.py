@@ -154,5 +154,6 @@ class FlowResponse(BaseModel):
     whale_intent: Optional[dict] = None
     data_source: Optional[dict] = None
     reliability: Optional[dict] = None
+    book_information: Optional[dict] = None  # top5_imbalance with its measured link to the next minute
     
     timestamp: float                      # KEPT for backward compat

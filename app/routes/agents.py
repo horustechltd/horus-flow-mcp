@@ -13,6 +13,7 @@ Horus Flow API — endpoints built for AI agents.
   GET  /v1/equity/session               public   US session phase, holidays, next open/close, active halts
   GET  /v1/equity/halts                 public   all US trading halts published today
   GET  /v1/cross-asset                  BUILDER  BTC order flow next to US equities flow (free: SPY and QQQ)
+  GET  /v1/book/pressure                public   order-book pressure across 30 Binance spot pairs (free: 3 rows)
 
 Endpoints marked "free:" serve lower plans a live preview with an "upgrade" block instead of a 403.
 """
@@ -26,7 +27,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from app import events, track_record, us_market, market_scanner
+from app import book_measure, events, track_record, us_market, market_scanner
 from app.auth import require_tier, tier_or_preview, upgrade_block, verify_api_key, tier_level
 
 router_agents = APIRouter()
@@ -389,4 +390,59 @@ async def scan_market(
     }
     if free and limit > FREE_SCAN_ROWS:
         out["upgrade"] = upgrade_block(auth, 1, "Up to 100 results per scan", f"The first {FREE_SCAN_ROWS} results on your plan")
+    return out
+
+
+# ─────────────────────────── order-book pressure ───────────────────────────
+FREE_BOOK_ROWS = 3
+BOOK_MAX_AGE_S = 60
+
+
+@router_agents.get("/book/pressure", tags=["Agents"])
+async def book_pressure(
+    sort: str = Query("bid", pattern="^(bid|ask)$", description="bid = strongest bid-side book first; ask = strongest ask side first"),
+    limit: int = Query(30, ge=1, le=30),
+    auth: dict = Depends(verify_api_key),
+):
+    """
+    What the spot order book says right now across 30 deep Binance USDT pairs, in one call: the share of the
+    top five levels' size on the bid side, the full-book bid/ask ratio and the last 30 seconds of taker flow,
+    refreshed every 15 seconds. Comes with the measured link between this number and the next minute's move
+    over the last 30 days. Free plan: first 3 rows. Paid plans: all 30.
+    """
+    from app.redis_client import redis_manager
+    r = redis_manager.redis
+    raw = await r.get(book_measure.LATEST_KEY) if r else None
+    if not raw:
+        raise HTTPException(status_code=503, detail={"error": "data_unavailable", "message": "Order-book recorder is starting. Retry in a minute."})
+    doc = json.loads(raw)
+    age = time.time() - doc["timestamp_epoch"]
+    if age > BOOK_MAX_AGE_S:
+        raise HTTPException(status_code=503, detail={"error": "data_stale", "age_seconds": int(age), "max_age_seconds": BOOK_MAX_AGE_S,
+                                                     "message": "The order-book recorder has not refreshed recently. Not serving stale data."})
+    rows = sorted(doc["rows"], key=lambda x: x["top5_imbalance"], reverse=(sort == "bid"))
+    free = tier_level(auth.get("tier")) == 0
+    cap = min(limit, FREE_BOOK_ROWS) if free else limit
+    out = {
+        "generated_at": datetime.fromtimestamp(doc["timestamp_epoch"], timezone.utc).isoformat(timespec="seconds"),
+        "data_age_seconds": round(age, 1),
+        "pairs_recorded": len(doc["rows"]),
+        "sort": sort,
+        "count": min(cap, len(rows)),
+        "rows": [{"symbol": x["symbol"], "price": x["price"], "top5_imbalance": x["top5_imbalance"],
+                  "book_tilt": book_measure.tilt(x["top5_imbalance"]), "bid_ask_ratio": x["bid_ask_ratio"],
+                  "spread_pct": x["spread_pct"], "buy_sell_ratio_30s": x["buy_sell_ratio"],
+                  "net_taker_flow_30s_usd": x["delta_30s"], "trades_30s": x["trade_count_30s"]} for x in rows[:cap]],
+        "measured": await book_measure.current_measure(r),
+        "fields": {
+            "top5_imbalance": "share of the top five levels' size on the bid side (0.5 = even; BID_HEAVY >= 0.6, ASK_HEAVY <= 0.4)",
+            "bid_ask_ratio": "total bid size / total ask size over the top 20 levels",
+            "buy_sell_ratio_30s": "share of the last 30 seconds' traded notional bought by aggressive buyers",
+            "net_taker_flow_30s_usd": "aggressive buys minus aggressive sells over the last 30 seconds, USD",
+        },
+        "note": "A reading of the book, not a prediction. 'measured' says how much this number has told about the next minute.",
+        "data_source": "Binance spot order book (top 20 levels, 100 ms updates) and aggregated trades",
+    }
+    if free and limit > FREE_BOOK_ROWS:
+        out["upgrade"] = upgrade_block(auth, 1, f"All {len(rows)} pairs, every 15 seconds", f"The first {FREE_BOOK_ROWS} pairs on your plan")
     return out

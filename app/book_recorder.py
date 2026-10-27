@@ -41,6 +41,7 @@ MAX_BOOK_AGE_S = 5          # a symbol whose book has not updated for 5 s is not
 WS_URL = "wss://stream.binance.com:9443/stream?streams="
 TICKER_URL = "https://api.binance.com/api/v3/ticker/24hr?type=MINI"
 HEARTBEAT_KEY = "horus:api:book_recorder:heartbeat"
+LATEST_KEY = "horus:api:book_pressure"  # the latest row of every pair, read by /v1/book/pressure
 
 
 def hour_file(base: Path, ts: float) -> Path:
@@ -162,6 +163,7 @@ class BookRecorder:
                     logger.info(f"closed {closed} hour file(s)")
                 if self.redis:
                     await self.redis.set(HEARTBEAT_KEY, json.dumps({"timestamp_epoch": now, "symbols": len(rows)}), ex=600)
+                    await self.redis.set(LATEST_KEY, json.dumps({"timestamp_epoch": now, "rows": rows}), ex=120)
             except Exception as e:
                 logger.error(f"snapshot failed: {e!r}")
 

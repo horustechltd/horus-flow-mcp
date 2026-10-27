@@ -1136,3 +1136,39 @@ def test_book_recorder_rows_and_hour_files(tmp_path):
     closed = br.hour_file(tmp_path, hour_ago)
     assert not closed.exists() and json.loads(gzip.open(str(closed) + ".gz", "rt").readline())["symbol"] == "AAAUSDT"
     assert br.hour_file(tmp_path, now).exists()
+
+
+def _put_book(r, age=5):
+    rows = [{"symbol": f"S{i:02d}USDT", "price": 10.0 + i, "top5_imbalance": round(0.2 + i * 0.02, 4), "bid_ask_ratio": 1.0 + i / 10,
+             "spread_pct": 0.01, "buy_sell_ratio": 0.5, "delta_30s": 1000.0 * i, "trade_count_30s": 10 + i} for i in range(30)]
+    r.kv["horus:api:book_pressure"] = json.dumps({"timestamp_epoch": time.time() - age, "rows": rows})
+    r.kv["horus:api:bookvalue:rolling"] = json.dumps({"symbols": 11, "start": "2026-10-23", "end": "2026-10-27", "results": [
+        {"feature": "top5_imbalance", "horizon": "1m", "ic_h1": 0.083, "t_h1": 12.1, "n_h1": 21078,
+         "ic_h2": 0.063, "t_h2": 8.9, "n_h2": 19681, "consistent": True}]})
+
+
+def test_book_pressure_tiers_and_freshness(fresh_state):
+    from app import book_measure
+    book_measure._cache.update(at=0.0, block=None)
+    assert get("/v1/book/pressure", "free").status_code == 503             # recorder not started
+    _put_book(fresh_state)
+    free = get("/v1/book/pressure", "free").json()
+    assert free["count"] == 3 and free["rows"][0]["symbol"] == "S29USDT" and free["rows"][0]["book_tilt"] == "BID_HEAVY"
+    assert free["upgrade"]["required_plan"] == "TRADER" and free["measured"]["consistent"] is True
+    assert free["measured"]["samples"] == 21078 + 19681 and "below typical trading costs" in free["measured"]["meaning"]
+    ask = get("/v1/book/pressure?sort=ask", "builder").json()
+    assert ask["count"] == 30 and ask["rows"][0]["book_tilt"] == "ASK_HEAVY" and "upgrade" not in ask
+    _put_book(fresh_state, age=120)
+    assert get("/v1/book/pressure", "builder").status_code == 503          # stale is refused
+
+
+def test_flow_carries_book_information(fresh_state):
+    from app import book_measure
+    book_measure._cache.update(at=0.0, block=None)
+    put_fresh_upstream(fresh_state)
+    _put_book(fresh_state)
+    full = get("/v1/flow/crypto/BTCUSDT", "builder").json()
+    bi = full["book_information"]
+    assert bi["top5_imbalance"] == full["metrics"]["top5_imbalance"] and bi["measured"]["field"] == "top5_imbalance"
+    compact = get("/v1/flow/crypto/ETHUSDT?view=compact", "builder").json()
+    assert compact["book_link_1m"] == 0.073 and compact["book_tilt"] in ("BID_HEAVY", "ASK_HEAVY", "BALANCED")

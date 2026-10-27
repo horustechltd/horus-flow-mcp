@@ -100,46 +100,8 @@ function formatJSON(obj) {
     }).join('\n');
 }
 
-// ============ CHECKOUT HANDLER ============
-function handleCheckout(plan) {
-    if (plan === 'free') {
-        // Show simple modal or redirect to signup
-        const email = prompt('Enter your email to receive a free API key:');
-        if (email && email.includes('@')) {
-            alert(`✅ Your free API key will be sent to ${email} within 1 minute.\n\nKey: horus-free-${Date.now().toString(36)}`);
-        }
-        return;
-    }
-    
-    if (plan === 'institutional') {
-        window.location.href = 'mailto:support' + '@' + 'horustech.com?subject=Institutional%20Plan%20Inquiry&body=I%20am%20interested%20in%20the%20Institutional%20plan.';
-        return;
-    }
-
-    // For Trader and Professional — redirect to Stripe Checkout
-    // This will be replaced with actual Stripe integration
-    const prices = {
-        trader: 'price_trader_monthly',
-        professional: 'price_pro_monthly'
-    };
-
-    fetch(`${API_BASE}/api/checkout/create-session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan, price_id: prices[plan] })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.checkout_url) {
-            window.location.href = data.checkout_url;
-        } else {
-            alert('Checkout coming soon! Contact support' + '@' + 'horustech.com for early access.');
-        }
-    })
-    .catch(() => {
-        alert('Checkout coming soon! Contact support' + '@' + 'horustech.com for early access.');
-    });
-}
+// Checkout lives in index.html (handleCheckout -> /api/billing/create-checkout-session, Stripe).
+// A second handleCheckout here overrode it (deferred script) and answered "Checkout coming soon".
 
 // ============ COUNTER ANIMATION ============
 function animateCounter(el, target, suffix = '') {

@@ -158,7 +158,7 @@ async def get_crypto_flow(symbol: str = "BTCUSDT", ctx: Context = None) -> dict[
 @mcp.tool(annotations=RO, structured_output=True)
 async def get_flow_history(symbol: str = "BTCUSDT", minutes: int = 60, ctx: Context = None) -> dict[str, Any]:
     """Recent order-flow snapshots (every 15s) for a crypto pair with a summary: signal counts, price change,
-    cumulative 30s delta. Use to see whether pressure is building or fading. minutes up to 60 (BUILDER / RapidAPI PRO) or 1440 (PRO / RapidAPI ULTRA); free plans get the last 15 minutes."""
+    cumulative 30s delta. Use to see whether pressure is building or fading. minutes up to 60 (TRADER / RapidAPI PRO) or 1440 (PRO / RapidAPI ULTRA); free plans get the last 15 minutes."""
     r = await _get(ctx, f"/v1/flow/crypto/{symbol.upper()}/history", {"minutes": minutes})
     if r.get("error"):
         return r
@@ -260,7 +260,7 @@ async def get_cortex(ctx: Context = None) -> dict[str, Any]:
 @mcp.tool(annotations=RO, structured_output=True)
 async def get_ignitions(limit: int = 10, ctx: Context = None) -> dict[str, Any]:
     """Volatility-breakout scanner across ~750 crypto assets, refreshed every minute: global regime and the
-    assets with the highest ignition score (0-1). A ranking of breakout conditions, not a probability. Full: BUILDER / RapidAPI PRO; free plans get the top 3."""
+    assets with the highest ignition score (0-1). A ranking of breakout conditions, not a probability. Full: TRADER / RapidAPI PRO; free plans get the top 3."""
     r = await _get(ctx, "/v1/intelligence/ignitions")
     if r.get("error"):
         return r
@@ -277,7 +277,7 @@ async def scan_market(preset: str = "buyers_in_control", limit: int = 10, min_vo
     Each row: price, 15m and 1h change, aggressive buy share, net taker flow in USD, volume surge, funding,
     ignition score, and Horus live flow with its measured hit rate where Horus tracks the pair.
     Use it to find where to look before calling get_crypto_flow or get_derivatives on a specific market.
-    Rankings of current conditions, not predictions. Free plans: 3 rows; BUILDER / RapidAPI PRO and above: up to 100."""
+    Rankings of current conditions, not predictions. Free plans: 3 rows; TRADER / RapidAPI PRO and above: up to 100."""
     r = await _get(ctx, "/v1/scan", {"preset": preset, "limit": max(1, min(limit, 50)), "min_volume_24h": min_volume_24h_usd})
     return {k: r[k] for k in ("preset", "criteria", "coverage", "count", "results", "note", "upgrade") if k in r}
 
@@ -303,7 +303,7 @@ async def get_track_record(signal: Optional[str] = None, window: str = "30d", ct
 async def get_signal_ledger(symbol: str = "BTCUSDT", start: Optional[str] = None, end: Optional[str] = None,
                             limit: int = 200, ctx: Context = None) -> dict[str, Any]:
     """Point-in-time ledger: every signal Horus emitted for BTCUSDT, ETHUSDT or SOLUSDT between start and end
-    (ISO dates, max 31 days), with the price and what the market did 1/5/15/30 minutes later. For backtesting. Full: BUILDER / RapidAPI PRO; free plans get 20 signals from the last 24 hours."""
+    (ISO dates, max 31 days), with the price and what the market did 1/5/15/30 minutes later. For backtesting. Full: TRADER / RapidAPI PRO; free plans get 20 signals from the last 24 hours."""
     return await _get(ctx, "/v1/track-record/signals", {"symbol": symbol.upper(), "start": start, "end": end, "limit": min(limit, 1000)})
 
 
@@ -311,7 +311,7 @@ async def get_signal_ledger(symbol: str = "BTCUSDT", start: Optional[str] = None
 async def get_recent_events(since_id: int = 0, types: Optional[str] = None, limit: int = 50, ctx: Context = None) -> dict[str, Any]:
     """What changed since your last check: liquidation cascades, strong flow signals, composite changes, Cortex
     regime changes, climate changes, ignition alerts, US session changes, new US trading halts. Pass the last
-    event id you saw as since_id. types is a comma-separated filter. Full: BUILDER / RapidAPI PRO; free plans get the last 3 events, 15 minutes late."""
+    event id you saw as since_id. types is a comma-separated filter. Full: TRADER / RapidAPI PRO; free plans get the last 3 events, 15 minutes late."""
     return await _get(ctx, "/v1/events", {"since_id": since_id, "types": types, "limit": min(limit, 200)})
 
 
@@ -327,14 +327,14 @@ async def get_us_market_session(ctx: Context = None) -> dict[str, Any]:
 async def get_cross_asset(ctx: Context = None) -> dict[str, Any]:
     """BTC order flow side by side with US equities flow (SPY, QQQ) and crypto-linked stocks and ETFs
     (COIN, MSTR, IBIT): are crypto and stocks risk-on together, risk-off together, or diverging? When US
-    markets are closed, says so and keeps BTC as the live gauge. Equity flow is an IEX sample. Full: BUILDER / RapidAPI PRO; free plans get SPY and QQQ only."""
+    markets are closed, says so and keeps BTC as the live gauge. Equity flow is an IEX sample. Full: TRADER / RapidAPI PRO; free plans get SPY and QQQ only."""
     return await _get(ctx, "/v1/cross-asset")
 
 
 @mcp.tool(annotations=RO, structured_output=True)
 async def get_equity_flow(symbol: str = "SPY", ctx: Context = None) -> dict[str, Any]:
     """Order flow for one US stock or ETF from the IEX feed (about 3% of US volume, a sample): signal, buy/sell
-    ratio, delta, large IEX prints. Extreme verdicts are capped because of the sample size. Full: BUILDER / RapidAPI PRO; free plans get SPY and QQQ."""
+    ratio, delta, large IEX prints. Extreme verdicts are capped because of the sample size. Full: TRADER / RapidAPI PRO; free plans get SPY and QQQ."""
     r = await _get(ctx, f"/v1/flow/equity/{symbol.upper()}")
     if r.get("error"):
         return r

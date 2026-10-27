@@ -258,14 +258,14 @@ def test_free_level_scope(key, fresh_state):
     put_fresh_upstream(fresh_state)
     assert get("/v1/flow/crypto/BTCUSDT", key).status_code == 200
     assert get("/v1/flow/crypto/SOLUSDT", key).status_code == 200  # every pair is open on free plans
-    assert get("/v1/flow/crypto/SOLUSDT", key).json()["upgrade"]["required_plan"] == "BUILDER"
+    assert get("/v1/flow/crypto/SOLUSDT", key).json()["upgrade"]["required_plan"] == "TRADER"
     # paid endpoints answer lower plans with a live preview, not a 403
     c = get("/v1/intelligence/cortex", key)
     assert c.status_code == 200 and c.json()["upgrade"]["preview"] is True and c.json()["upgrade"]["required_plan"] == "PRO"
     assert "action_policy" not in c.json() and "action_policy" in c.json()["locked_fields"]
     assert c.json()["regime_state"] == "HEALTHY_CONSOLIDATION" and "headline_en" in c.json()["narrative"]
     cl = get("/v1/intelligence/climate", key).json()
-    assert cl["market_mode"] == "CHOP" and "reasoning" not in cl and cl["upgrade"]["required_plan"] == "BUILDER"
+    assert cl["market_mode"] == "CHOP" and "reasoning" not in cl and cl["upgrade"]["required_plan"] == "TRADER"
     hm = get("/v1/intelligence/liquidation-heatmap?symbol=ETHUSDT", key)
     assert hm.status_code == 403 and hm.json()["detail"]["required_plan"] == "PRO"
     assert "BTCUSDT" in hm.json()["detail"]["message"]
@@ -989,3 +989,19 @@ def test_disk_alert_once_and_recovery(fresh_state, monkeypatch):
     for gb in (20.0, 11.5, 10.0, 13.0, 15.0, 15.0):
         asyncio.run(sm._disk_alert(gb))
     assert len(sent) == 2 and "11.5" in sent[0] and "15.0" in sent[1]  # one warning, no repeat, one recovery
+
+
+def test_daily_quota_message_says_when_and_what_next(fresh_state):
+    from app import database
+    database.init_db()
+    user = database.create_user(f"quota{time.time()}@example.org", "pw-123456")
+    key = database.generate_api_key(None, user["id"], "free")
+    conn = database._get_conn()
+    conn.executemany("INSERT INTO usage_log (api_key, endpoint) VALUES (?, ?)", [(key, "/v1/flow/crypto/BTCUSDT")] * 100)
+    conn.commit()
+    conn.close()
+    r = client.get("/v1/flow/crypto/BTCUSDT", headers={"X-API-Key": key})
+    d = r.json()["detail"]
+    assert r.status_code == 429 and d["error"] == "daily_quota_exceeded" and d["daily_limit"] == 100
+    assert d["required_plan"] == "TRADER" and "1,000 calls a day" in d["message"] and d["subscribe"].endswith("#pricing")
+    assert 0 < int(r.headers["Retry-After"]) <= 86400 and d["resets_at_utc"].endswith("T00:00:00+00:00")

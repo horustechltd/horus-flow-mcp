@@ -229,7 +229,7 @@ async def build_flow_response(clean_symbol: str, update_oscillation: bool = True
 @router.get("/{symbol}/history")
 async def get_flow_history(
     symbol: str,
-    minutes: int = Query(default=30, ge=1, le=1440, description="Lookback in minutes (free preview 15, BUILDER / RapidAPI PRO up to 60, PRO / RapidAPI ULTRA up to 1440)"),
+    minutes: int = Query(default=30, ge=1, le=1440, description="Lookback in minutes (free preview 15, TRADER / RapidAPI PRO up to 60, PRO / RapidAPI ULTRA up to 1440)"),
     auth: dict = Depends(tier_or_preview("BUILDER"))
 ):
     """

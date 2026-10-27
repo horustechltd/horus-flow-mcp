@@ -147,11 +147,13 @@ def update_password(user_id: int, new_password: str):
 
 # ============ API Key Management ============
 
+DAILY_LIMITS = {"free": 100, "trader": 1000, "pro": 5000, "institutional": 99999, "admin": 99999}
+
+
 def generate_api_key(conn_or_none, user_id: int, tier: str = "free") -> str:
     """Generate a unique API key for a user."""
     key = f"hf_{tier}_{secrets.token_hex(16)}"
-    limits = {"free": 100, "trader": 1000, "pro": 5000, "institutional": 99999, "admin": 99999}
-    daily_limit = limits.get(tier, 100)
+    daily_limit = DAILY_LIMITS.get(tier, 100)
 
     conn = conn_or_none or _get_conn()
     conn.execute(
@@ -190,10 +192,9 @@ def upgrade_user_tier(user_id: int, new_tier: str, stripe_sub_id: str = ""):
         (new_tier, stripe_sub_id, user_id)
     )
     # Update existing active key tier
-    limits = {"free": 100, "trader": 1000, "pro": 5000, "institutional": 99999}
     conn.execute(
         "UPDATE api_keys SET tier = ?, daily_limit = ? WHERE user_id = ? AND is_active = 1",
-        (new_tier, limits.get(new_tier, 100), user_id)
+        (new_tier, DAILY_LIMITS.get(new_tier, 100), user_id)
     )
     conn.commit()
     conn.close()

@@ -4,7 +4,7 @@ Horus Flow Signal API — API key auth, tier levels and rate limits.
 
 Access levels (one matrix for every channel):
   level 0  FREE      demo, free, mcp_public, RapidAPI BASIC
-  level 1  BUILDER   builder, trader (Stripe), RapidAPI PRO
+  level 1  TRADER    trader (site, Stripe), builder, RapidAPI PRO
   level 2  PRO       pro (Stripe), ultra, RapidAPI ULTRA
   level 3  INSTITUTIONAL  institutional, mega, RapidAPI MEGA
   level 99 ADMIN     internal services only (never shipped to a browser)
@@ -16,7 +16,7 @@ Upgrade messages name the plan in the caller's channel (RapidAPI PRO/ULTRA/MEGA 
 import ipaddress
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException, Security, Request, Header, Depends, Response
@@ -63,7 +63,7 @@ RAPIDAPI_PRICING_URL = "https://rapidapi.com/horus-tech-ltd-horus-tech-ltd-defau
 SITE_PRICING_URL = "https://flow.horustek.pro/#pricing"
 # Plan names per channel: a RapidAPI subscriber can only buy RapidAPI plans
 PLAN_NAMES = {"rapidapi": {0: "BASIC", 1: "PRO", 2: "ULTRA", 3: "MEGA"},
-              "direct": {0: "FREE", 1: "BUILDER", 2: "PRO", 3: "INSTITUTIONAL"}}
+              "direct": {0: "FREE", 1: "TRADER", 2: "PRO", 3: "INSTITUTIONAL"}}  # the site's plans
 
 
 def _channel(auth_data: dict) -> str:
@@ -174,6 +174,29 @@ def _enforce_rate_limit(bucket: str, tier: str):
     return limit
 
 
+def _daily_quota_exceeded(tier: str, daily_limit: int) -> HTTPException:
+    """The moment a subscriber needs more than the plan gives: say what happened, when it resets, and what is next."""
+    from app.database import DAILY_LIMITS
+    now = datetime.now(timezone.utc)
+    reset = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    wait = int((reset - now).total_seconds())
+    level = min(tier_level(tier) + 1, 3)
+    plan = PLAN_NAMES["direct"][level]
+    nxt = DAILY_LIMITS.get(plan.lower(), 0)
+    detail = {
+        "error": "daily_quota_exceeded",
+        "message": (f"Your {tier.upper()} plan allows {daily_limit:,} calls a day and today's are used. "
+                    f"The quota resets at 00:00 UTC, in {wait // 3600} h {wait % 3600 // 60} min. "
+                    f"The {plan} plan allows {nxt:,} calls a day."),
+        "daily_limit": daily_limit,
+        "resets_at_utc": reset.isoformat(),
+        "retry_after_seconds": wait,
+    } | upgrade_block({"tier": tier}, level, f"{nxt:,} calls a day" + (
+        ", flow history, the full market scanner, the event feed, climate, ignitions and US equity flow" if level == 1 else ""))
+    return HTTPException(status_code=429, detail=detail,
+                         headers={"Retry-After": str(wait), "X-RateLimit-Limit": str(daily_limit), "X-RateLimit-Remaining": "0"})
+
+
 async def verify_api_key(
     request: Request,
     response: Response,
@@ -243,7 +266,7 @@ async def verify_api_key(
         daily_limit = key_info.get("daily_limit", 100)
         usage_today = get_daily_usage(api_key)
         if usage_today >= daily_limit:
-            raise HTTPException(status_code=429, detail={"error": "daily_quota_exceeded"})
+            raise _daily_quota_exceeded(tier, daily_limit)
         request.state.api_key = api_key
         response.headers["X-RateLimit-Limit"] = str(daily_limit)
         response.headers["X-RateLimit-Remaining"] = str(max(0, daily_limit - usage_today - 1))
